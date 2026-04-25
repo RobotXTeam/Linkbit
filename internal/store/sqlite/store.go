@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/linkbit/linkbit/internal/models"
@@ -58,6 +59,15 @@ CREATE TABLE IF NOT EXISTS invitations (
 	used_at TEXT NOT NULL DEFAULT '',
 	created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS api_keys (
+	id TEXT PRIMARY KEY,
+	name TEXT NOT NULL,
+	digest TEXT NOT NULL UNIQUE,
+	scope TEXT NOT NULL,
+	created_at TEXT NOT NULL,
+	last_used_at TEXT NOT NULL DEFAULT '',
+	revoked_at TEXT NOT NULL DEFAULT ''
+);
 CREATE TABLE IF NOT EXISTS devices (
 	id TEXT PRIMARY KEY,
 	user_id TEXT NOT NULL,
@@ -65,6 +75,7 @@ CREATE TABLE IF NOT EXISTS devices (
 	name TEXT NOT NULL,
 	virtual_ip TEXT NOT NULL UNIQUE,
 	public_key TEXT NOT NULL,
+	token_hash TEXT NOT NULL DEFAULT '',
 	status TEXT NOT NULL,
 	last_seen_at TEXT NOT NULL,
 	created_at TEXT NOT NULL,
@@ -83,7 +94,61 @@ CREATE TABLE IF NOT EXISTS policies (
 	updated_at TEXT NOT NULL
 );
 `)
+	if err != nil {
+		return err
+	}
+	// SQLite lacks IF NOT EXISTS for ADD COLUMN on older versions, so ignore the
+	// duplicate-column error while still surfacing any unexpected migration issue.
+	for _, statement := range []string{
+		`ALTER TABLE devices ADD COLUMN token_hash TEXT NOT NULL DEFAULT ''`,
+	} {
+		if _, err := s.db.ExecContext(ctx, statement); err != nil && !isDuplicateColumn(err) {
+			return err
+		}
+	}
 	return err
+}
+
+func (s *Store) CreateAPIKey(ctx context.Context, apiKey models.APIKey) error {
+	_, err := s.db.ExecContext(ctx, `
+INSERT INTO api_keys (id, name, digest, scope, created_at, last_used_at, revoked_at)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+`, apiKey.ID, apiKey.Name, apiKey.Digest, apiKey.Scope, formatTime(apiKey.CreatedAt), formatOptionalTime(apiKey.LastUsedAt), formatOptionalTime(apiKey.RevokedAt))
+	return err
+}
+
+func (s *Store) GetAPIKeyByDigest(ctx context.Context, digest string) (models.APIKey, error) {
+	row := s.db.QueryRowContext(ctx, `
+SELECT id, name, digest, scope, created_at, last_used_at, revoked_at
+FROM api_keys WHERE digest = ? AND revoked_at = ''
+`, digest)
+	return scanAPIKey(row)
+}
+
+func (s *Store) TouchAPIKey(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE api_keys SET last_used_at = ? WHERE id = ?`, formatTime(time.Now().UTC()), id)
+	return err
+}
+
+func (s *Store) ListAPIKeys(ctx context.Context) ([]models.APIKey, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT id, name, digest, scope, created_at, last_used_at, revoked_at
+FROM api_keys ORDER BY created_at DESC
+`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var apiKeys []models.APIKey
+	for rows.Next() {
+		apiKey, err := scanAPIKey(rows)
+		if err != nil {
+			return nil, err
+		}
+		apiKeys = append(apiKeys, apiKey)
+	}
+	return apiKeys, rows.Err()
 }
 
 func (s *Store) UpsertRelay(ctx context.Context, relay models.RelayNode) error {
@@ -100,6 +165,11 @@ ON CONFLICT(id) DO UPDATE SET
 	load = excluded.load,
 	last_seen_at = excluded.last_seen_at
 `, relay.ID, relay.Name, relay.Region, relay.PublicURL, relay.IPv4, relay.IPv6, relay.Status, relay.Load, formatTime(relay.LastSeenAt), formatTime(relay.Registered))
+	return err
+}
+
+func (s *Store) DeleteRelay(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM relays WHERE id = ?`, id)
 	return err
 }
 
@@ -167,15 +237,36 @@ UPDATE invitations SET used_at = ? WHERE id = ?
 
 func (s *Store) CreateDevice(ctx context.Context, device models.Device) error {
 	_, err := s.db.ExecContext(ctx, `
-INSERT INTO devices (id, user_id, group_id, name, virtual_ip, public_key, status, last_seen_at, created_at, fingerprint)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`, device.ID, device.UserID, device.GroupID, device.Name, device.VirtualIP, device.PublicKey, device.Status, formatTime(device.LastSeenAt), formatTime(device.CreatedAt), device.Fingerprint)
+INSERT INTO devices (id, user_id, group_id, name, virtual_ip, public_key, token_hash, status, last_seen_at, created_at, fingerprint)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`, device.ID, device.UserID, device.GroupID, device.Name, device.VirtualIP, device.PublicKey, device.TokenHash, device.Status, formatTime(device.LastSeenAt), formatTime(device.CreatedAt), device.Fingerprint)
 	return err
+}
+
+func (s *Store) UpdateDeviceHealth(ctx context.Context, id string, tokenHash string, report models.DeviceHealthReport) (models.Device, error) {
+	status := report.Status
+	if status == "" {
+		status = models.DeviceStatusOnline
+	}
+	res, err := s.db.ExecContext(ctx, `
+UPDATE devices SET status = ?, last_seen_at = ? WHERE id = ? AND token_hash = ?
+`, status, formatTime(time.Now().UTC()), id, tokenHash)
+	if err != nil {
+		return models.Device{}, err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return models.Device{}, err
+	}
+	if affected == 0 {
+		return models.Device{}, sql.ErrNoRows
+	}
+	return s.getDevice(ctx, id)
 }
 
 func (s *Store) ListDevices(ctx context.Context) ([]models.Device, error) {
 	rows, err := s.db.QueryContext(ctx, `
-SELECT id, user_id, group_id, name, virtual_ip, public_key, status, last_seen_at, created_at, fingerprint
+SELECT id, user_id, group_id, name, virtual_ip, public_key, token_hash, status, last_seen_at, created_at, fingerprint
 FROM devices ORDER BY created_at DESC
 `)
 	if err != nil {
@@ -264,6 +355,14 @@ FROM relays WHERE id = ?
 	return scanRelay(row)
 }
 
+func (s *Store) getDevice(ctx context.Context, id string) (models.Device, error) {
+	row := s.db.QueryRowContext(ctx, `
+SELECT id, user_id, group_id, name, virtual_ip, public_key, token_hash, status, last_seen_at, created_at, fingerprint
+FROM devices WHERE id = ?
+`, id)
+	return scanDevice(row)
+}
+
 type scanner interface {
 	Scan(dest ...any) error
 }
@@ -295,10 +394,23 @@ func scanInvitation(row scanner) (models.Invitation, error) {
 	return invitation, nil
 }
 
+func scanAPIKey(row scanner) (models.APIKey, error) {
+	var apiKey models.APIKey
+	var createdAt, lastUsedAt, revokedAt string
+	err := row.Scan(&apiKey.ID, &apiKey.Name, &apiKey.Digest, &apiKey.Scope, &createdAt, &lastUsedAt, &revokedAt)
+	if err != nil {
+		return apiKey, err
+	}
+	apiKey.CreatedAt = parseTime(createdAt)
+	apiKey.LastUsedAt = parseTime(lastUsedAt)
+	apiKey.RevokedAt = parseTime(revokedAt)
+	return apiKey, nil
+}
+
 func scanDevice(row scanner) (models.Device, error) {
 	var device models.Device
 	var lastSeenAt, createdAt string
-	err := row.Scan(&device.ID, &device.UserID, &device.GroupID, &device.Name, &device.VirtualIP, &device.PublicKey, &device.Status, &lastSeenAt, &createdAt, &device.Fingerprint)
+	err := row.Scan(&device.ID, &device.UserID, &device.GroupID, &device.Name, &device.VirtualIP, &device.PublicKey, &device.TokenHash, &device.Status, &lastSeenAt, &createdAt, &device.Fingerprint)
 	if err != nil {
 		return device, err
 	}
@@ -351,4 +463,8 @@ func boolInt(value bool) int {
 		return 1
 	}
 	return 0
+}
+
+func isDuplicateColumn(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "duplicate column name")
 }

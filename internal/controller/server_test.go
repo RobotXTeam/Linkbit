@@ -28,15 +28,53 @@ func TestRelayRegistrationRequiresAPIKey(t *testing.T) {
 
 func TestRelayRegistration(t *testing.T) {
 	server := newTestServer(t)
+	handler := server.Handler()
 	body := `{"id":"relay-1","name":"Relay 1","region":"ap-east","publicUrl":"https://relay.example.com"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/relays/register", bytes.NewBufferString(body))
 	req.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
 	rec := httptest.NewRecorder()
 
-	server.Handler().ServeHTTP(rec, req)
+	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+
+	deleteReq := httptest.NewRequest(http.MethodDelete, "/api/v1/relays/relay-1", nil)
+	deleteReq.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
+	deleteRec := httptest.NewRecorder()
+	handler.ServeHTTP(deleteRec, deleteReq)
+	if deleteRec.Code != http.StatusNoContent {
+		t.Fatalf("delete status = %d, want %d; body=%s", deleteRec.Code, http.StatusNoContent, deleteRec.Body.String())
+	}
+}
+
+func TestPersistentAPIKeyAuthenticates(t *testing.T) {
+	server := newTestServer(t)
+	handler := server.Handler()
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/api-keys", bytes.NewBufferString(`{"name":"ops","scope":"admin"}`))
+	createReq.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
+	createRec := httptest.NewRecorder()
+	handler.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("create key status = %d, want %d; body=%s", createRec.Code, http.StatusCreated, createRec.Body.String())
+	}
+
+	var apiKey models.APIKey
+	if err := json.NewDecoder(createRec.Body).Decode(&apiKey); err != nil {
+		t.Fatalf("decode api key: %v", err)
+	}
+	if apiKey.PlaintextKey == "" || apiKey.Digest != "" {
+		t.Fatalf("api key leaked wrong fields: %+v", apiKey)
+	}
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/v1/relays", nil)
+	listReq.Header.Set(linkbitapi.HeaderAPIKey, apiKey.PlaintextKey)
+	listRec := httptest.NewRecorder()
+	handler.ServeHTTP(listRec, listReq)
+	if listRec.Code != http.StatusOK {
+		t.Fatalf("list status = %d, want %d; body=%s", listRec.Code, http.StatusOK, listRec.Body.String())
 	}
 }
 
@@ -66,6 +104,21 @@ func TestInvitationRegistersDeviceOnce(t *testing.T) {
 	handler.ServeHTTP(registerRec, registerReq)
 	if registerRec.Code != http.StatusCreated {
 		t.Fatalf("register status = %d, want %d; body=%s", registerRec.Code, http.StatusCreated, registerRec.Body.String())
+	}
+	var registration models.DeviceRegistrationResponse
+	if err := json.NewDecoder(registerRec.Body).Decode(&registration); err != nil {
+		t.Fatalf("decode registration: %v", err)
+	}
+	if registration.Device.DeviceToken == "" || registration.Device.TokenHash != "" {
+		t.Fatalf("device leaked wrong token fields: %+v", registration.Device)
+	}
+
+	healthReq := httptest.NewRequest(http.MethodPost, "/api/v1/devices/"+registration.Device.ID+"/health", bytes.NewBufferString(`{"status":"online","latencyMs":8,"peersReachable":1,"peersTotal":1}`))
+	healthReq.Header.Set(linkbitapi.HeaderDeviceToken, registration.Device.DeviceToken)
+	healthRec := httptest.NewRecorder()
+	handler.ServeHTTP(healthRec, healthReq)
+	if healthRec.Code != http.StatusOK {
+		t.Fatalf("health status = %d, want %d; body=%s", healthRec.Code, http.StatusOK, healthRec.Body.String())
 	}
 
 	registerAgainReq := httptest.NewRequest(http.MethodPost, "/api/v1/devices/register", bytes.NewBufferString(registerBody))

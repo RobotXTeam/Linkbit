@@ -1,24 +1,35 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Cpu, Gauge, KeyRound, RadioTower, Server } from "lucide-react";
+import { Copy, Cpu, Gauge, KeyRound, Plus, RadioTower, Server, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "../components/ui/button";
 import {
+  createAPIKey,
   createInvitation,
+  deleteRelay,
+  getAPIKeys,
   getDevices,
   getOverview,
   getPolicies,
   getRelays,
   getStoredAPIKey,
+  registerRelay,
   storeAPIKey
 } from "../lib/api";
 
-const queryKeys = ["overview", "devices", "relays", "policies"] as const;
+const queryKeys = ["overview", "devices", "relays", "policies", "apiKeys"] as const;
 
 export function DashboardPage() {
   const queryClient = useQueryClient();
   const [apiKeyInput, setApiKeyInput] = useState(getStoredAPIKey);
   const [apiKey, setApiKey] = useState(getStoredAPIKey);
   const [lastToken, setLastToken] = useState("");
+  const [lastAPIKey, setLastAPIKey] = useState("");
+  const [relayForm, setRelayForm] = useState({
+    id: "",
+    name: "",
+    region: "default",
+    publicUrl: ""
+  });
   const enabled = apiKey.length > 0;
 
   const overview = useQuery({
@@ -41,11 +52,36 @@ export function DashboardPage() {
     queryFn: () => getPolicies(apiKey),
     enabled
   });
+  const apiKeys = useQuery({
+    queryKey: ["apiKeys", apiKey],
+    queryFn: () => getAPIKeys(apiKey),
+    enabled
+  });
 
   const invite = useMutation({
     mutationFn: () => createInvitation(apiKey),
     onSuccess: (value) => {
       setLastToken(value.token ?? "");
+      queryKeys.forEach((key) => void queryClient.invalidateQueries({ queryKey: [key, apiKey] }));
+    }
+  });
+  const createRelayKey = useMutation({
+    mutationFn: () => createAPIKey(apiKey, "relay"),
+    onSuccess: (value) => {
+      setLastAPIKey(value.key ?? "");
+      queryKeys.forEach((key) => void queryClient.invalidateQueries({ queryKey: [key, apiKey] }));
+    }
+  });
+  const addRelay = useMutation({
+    mutationFn: () => registerRelay(apiKey, relayForm),
+    onSuccess: () => {
+      setRelayForm({ id: "", name: "", region: "default", publicUrl: "" });
+      queryKeys.forEach((key) => void queryClient.invalidateQueries({ queryKey: [key, apiKey] }));
+    }
+  });
+  const removeRelay = useMutation({
+    mutationFn: (id: string) => deleteRelay(apiKey, id),
+    onSuccess: () => {
       queryKeys.forEach((key) => void queryClient.invalidateQueries({ queryKey: [key, apiKey] }));
     }
   });
@@ -146,15 +182,73 @@ export function DashboardPage() {
 
       <section className="mt-6 grid gap-4 lg:grid-cols-2">
         <div className="rounded-lg border border-border bg-white p-4">
-          <h2 className="text-base font-semibold">DERP 中继</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-base font-semibold">服务器 / DERP 中继</h2>
+            <Button onClick={() => createRelayKey.mutate()} disabled={!enabled || createRelayKey.isPending}>
+              中继密钥
+            </Button>
+          </div>
+          <form
+            className="mt-4 grid gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              addRelay.mutate();
+            }}
+          >
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input
+                className="h-9 rounded-md border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+                placeholder="服务器 ID"
+                value={relayForm.id}
+                onChange={(event) => setRelayForm((value) => ({ ...value, id: event.target.value }))}
+              />
+              <input
+                className="h-9 rounded-md border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+                placeholder="名称"
+                value={relayForm.name}
+                onChange={(event) => setRelayForm((value) => ({ ...value, name: event.target.value }))}
+              />
+              <input
+                className="h-9 rounded-md border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+                placeholder="区域"
+                value={relayForm.region}
+                onChange={(event) => setRelayForm((value) => ({ ...value, region: event.target.value }))}
+              />
+              <input
+                className="h-9 rounded-md border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+                placeholder="公网 URL"
+                value={relayForm.publicUrl}
+                onChange={(event) => setRelayForm((value) => ({ ...value, publicUrl: event.target.value }))}
+              />
+            </div>
+            <Button className="w-fit gap-2" disabled={!enabled || addRelay.isPending}>
+              <Plus className="h-4 w-4" />
+              添加
+            </Button>
+          </form>
+          {lastAPIKey ? (
+            <button
+              className="mt-4 flex w-full items-center justify-between gap-3 rounded-md border border-border bg-muted p-3 text-left text-xs"
+              onClick={() => void navigator.clipboard.writeText(lastAPIKey)}
+            >
+              <span className="break-all">{lastAPIKey}</span>
+              <Copy className="h-4 w-4 shrink-0" />
+            </button>
+          ) : null}
           <div className="mt-4 grid gap-2">
             {(relays.data ?? []).length === 0 ? (
               <div className="rounded-md border border-dashed border-border p-6 text-sm text-muted-foreground">暂无中继节点</div>
             ) : (
               (relays.data ?? []).map((relay) => (
-                <div key={relay.id} className="rounded-md border border-border p-3 text-sm">
-                  <div className="font-medium">{relay.name}</div>
-                  <div className="mt-1 text-muted-foreground">{relay.region} · {relay.status} · load {relay.load.toFixed(2)}</div>
+                <div key={relay.id} className="flex items-start justify-between gap-3 rounded-md border border-border p-3 text-sm">
+                  <div>
+                    <div className="font-medium">{relay.name}</div>
+                    <div className="mt-1 text-muted-foreground">{relay.region} · {relay.status} · load {relay.load.toFixed(2)}</div>
+                    <div className="mt-1 break-all text-xs text-muted-foreground">{relay.publicUrl}</div>
+                  </div>
+                  <Button variant="ghost" onClick={() => removeRelay.mutate(relay.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               ))
             )}
@@ -174,6 +268,22 @@ export function DashboardPage() {
               ))
             )}
           </div>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-lg border border-border bg-white p-4">
+        <h2 className="text-base font-semibold">API Key</h2>
+        <div className="mt-4 grid gap-2">
+          {(apiKeys.data ?? []).length === 0 ? (
+            <div className="rounded-md border border-dashed border-border p-6 text-sm text-muted-foreground">暂无持久密钥</div>
+          ) : (
+            (apiKeys.data ?? []).map((item) => (
+              <div key={item.id} className="grid gap-1 rounded-md border border-border p-3 text-sm">
+                <div className="font-medium">{item.name}</div>
+                <div className="text-muted-foreground">{item.scope} · {new Date(item.createdAt).toLocaleString()}</div>
+              </div>
+            ))
+          )}
         </div>
       </section>
     </div>

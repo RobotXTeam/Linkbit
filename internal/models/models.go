@@ -17,6 +17,8 @@ type Device struct {
 	Name        string       `json:"name"`
 	VirtualIP   string       `json:"virtualIp"`
 	PublicKey   string       `json:"publicKey"`
+	TokenHash   string       `json:"-"`
+	DeviceToken string       `json:"deviceToken,omitempty"`
 	Status      DeviceStatus `json:"status"`
 	LastSeenAt  time.Time    `json:"lastSeenAt"`
 	CreatedAt   time.Time    `json:"createdAt"`
@@ -34,6 +36,13 @@ type DeviceRegistrationResponse struct {
 	Device  Device      `json:"device"`
 	Relays  []RelayNode `json:"relays"`
 	Message string      `json:"message"`
+}
+
+type DeviceHealthReport struct {
+	Status         DeviceStatus `json:"status"`
+	LatencyMS      int          `json:"latencyMs"`
+	PeersReachable int          `json:"peersReachable"`
+	PeersTotal     int          `json:"peersTotal"`
 }
 
 type RelayStatus string
@@ -87,6 +96,22 @@ type InvitationCreateRequest struct {
 	GroupID          string `json:"groupId"`
 	Reusable         bool   `json:"reusable"`
 	ExpiresInSeconds int    `json:"expiresInSeconds"`
+}
+
+type APIKey struct {
+	ID           string    `json:"id"`
+	Name         string    `json:"name"`
+	Digest       string    `json:"-"`
+	Scope        string    `json:"scope"`
+	CreatedAt    time.Time `json:"createdAt"`
+	LastUsedAt   time.Time `json:"lastUsedAt,omitempty"`
+	RevokedAt    time.Time `json:"revokedAt,omitempty"`
+	PlaintextKey string    `json:"key,omitempty"`
+}
+
+type APIKeyCreateRequest struct {
+	Name  string `json:"name"`
+	Scope string `json:"scope"`
 }
 
 type Overview struct {

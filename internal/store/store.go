@@ -13,14 +13,21 @@ type Store interface {
 	Close() error
 
 	UpsertRelay(context.Context, models.RelayNode) error
+	DeleteRelay(context.Context, string) error
 	HeartbeatRelay(context.Context, string, float64) (models.RelayNode, error)
 	ListRelays(context.Context) ([]models.RelayNode, error)
+
+	CreateAPIKey(context.Context, models.APIKey) error
+	GetAPIKeyByDigest(context.Context, string) (models.APIKey, error)
+	TouchAPIKey(context.Context, string) error
+	ListAPIKeys(context.Context) ([]models.APIKey, error)
 
 	CreateInvitation(context.Context, models.Invitation) error
 	GetInvitationByTokenHash(context.Context, string) (models.Invitation, error)
 	MarkInvitationUsed(context.Context, string) error
 
 	CreateDevice(context.Context, models.Device) error
+	UpdateDeviceHealth(context.Context, string, string, models.DeviceHealthReport) (models.Device, error)
 	ListDevices(context.Context) ([]models.Device, error)
 
 	CreatePolicy(context.Context, models.NetworkPolicy) error

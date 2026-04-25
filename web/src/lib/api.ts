@@ -35,6 +35,15 @@ const relaySchema = z.object({
   lastSeenAt: z.string()
 });
 
+const apiKeySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  scope: z.string(),
+  createdAt: z.string(),
+  lastUsedAt: z.string().optional(),
+  key: z.string().optional()
+});
+
 const policySchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -60,6 +69,7 @@ export type Device = z.infer<typeof deviceSchema>;
 export type RelayNode = z.infer<typeof relaySchema>;
 export type NetworkPolicy = z.infer<typeof policySchema>;
 export type Invitation = z.infer<typeof invitationSchema>;
+export type APIKey = z.infer<typeof apiKeySchema>;
 
 export function getStoredAPIKey() {
   return window.localStorage.getItem(API_KEY_STORAGE) ?? "";
@@ -81,8 +91,40 @@ export async function getRelays(apiKey: string) {
   return z.array(relaySchema).parse(await request("/api/v1/relays", apiKey));
 }
 
+export async function registerRelay(
+  apiKey: string,
+  input: { id: string; name: string; region: string; publicUrl: string }
+) {
+  return relaySchema.parse(
+    await request("/api/v1/relays/register", apiKey, {
+      method: "POST",
+      body: JSON.stringify(input)
+    })
+  );
+}
+
+export async function deleteRelay(apiKey: string, id: string) {
+  await request(`/api/v1/relays/${encodeURIComponent(id)}`, apiKey, { method: "DELETE" });
+}
+
 export async function getPolicies(apiKey: string) {
   return z.array(policySchema).parse(await request("/api/v1/policies", apiKey));
+}
+
+export async function getAPIKeys(apiKey: string) {
+  return z.array(apiKeySchema).parse(await request("/api/v1/api-keys", apiKey));
+}
+
+export async function createAPIKey(apiKey: string, scope: "admin" | "relay") {
+  return apiKeySchema.parse(
+    await request("/api/v1/api-keys", apiKey, {
+      method: "POST",
+      body: JSON.stringify({
+        name: `${scope}-${new Date().toISOString()}`,
+        scope
+      })
+    })
+  );
 }
 
 export async function createInvitation(apiKey: string, reusable = false) {
@@ -108,6 +150,9 @@ async function request(path: string, apiKey: string, init: RequestInit = {}) {
       ...init.headers
     }
   });
+  if (resp.status === 204) {
+    return {};
+  }
   const payload = await resp.json().catch(() => ({}));
   if (!resp.ok) {
     const message = typeof payload.error === "string" ? payload.error : resp.statusText;
@@ -115,4 +160,3 @@ async function request(path: string, apiKey: string, init: RequestInit = {}) {
   }
   return payload;
 }
-

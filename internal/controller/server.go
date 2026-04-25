@@ -48,11 +48,15 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.handleHealth)
 	mux.Handle("GET /api/v1/overview", s.requireAPIKey(http.HandlerFunc(s.handleOverview)))
+	mux.Handle("POST /api/v1/api-keys", s.requireAPIKey(http.HandlerFunc(s.handleAPIKeyCreate)))
+	mux.Handle("GET /api/v1/api-keys", s.requireAPIKey(http.HandlerFunc(s.handleAPIKeyList)))
 	mux.Handle("POST /api/v1/relays/register", s.requireAPIKey(http.HandlerFunc(s.handleRelayRegister)))
+	mux.Handle("DELETE /api/v1/relays/{id}", s.requireAPIKey(http.HandlerFunc(s.handleRelayDelete)))
 	mux.Handle("POST /api/v1/relays/heartbeat", s.requireAPIKey(http.HandlerFunc(s.handleRelayHeartbeat)))
 	mux.Handle("GET /api/v1/relays", s.requireAPIKey(http.HandlerFunc(s.handleRelayList)))
 	mux.Handle("GET /api/v1/devices", s.requireAPIKey(http.HandlerFunc(s.handleDeviceList)))
 	mux.HandleFunc("POST /api/v1/devices/register", s.handleDeviceRegister)
+	mux.HandleFunc("POST /api/v1/devices/{id}/health", s.handleDeviceHealth)
 	mux.Handle("POST /api/v1/invitations", s.requireAPIKey(http.HandlerFunc(s.handleInvitationCreate)))
 	mux.Handle("POST /api/v1/policies", s.requireAPIKey(http.HandlerFunc(s.handlePolicyCreate)))
 	mux.Handle("GET /api/v1/policies", s.requireAPIKey(http.HandlerFunc(s.handlePolicyList)))
@@ -97,6 +101,75 @@ func (s *Server) handleRelayRegister(w http.ResponseWriter, r *http.Request) {
 
 	s.logger.Info("relay registered", "relay_id", relay.ID, "public_url", relay.PublicURL)
 	writeJSON(w, http.StatusCreated, relay)
+}
+
+func (s *Server) handleRelayDelete(w http.ResponseWriter, r *http.Request) {
+	relayID := r.PathValue("id")
+	if relayID == "" {
+		writeError(w, http.StatusBadRequest, "relay id is required")
+		return
+	}
+	if err := s.store.DeleteRelay(r.Context(), relayID); err != nil {
+		s.logger.Error("delete relay failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "delete relay failed")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleAPIKeyCreate(w http.ResponseWriter, r *http.Request) {
+	var req models.APIKeyCreateRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid api key payload")
+		return
+	}
+	if strings.TrimSpace(req.Name) == "" {
+		writeError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+	if req.Scope == "" {
+		req.Scope = "admin"
+	}
+	if req.Scope != "admin" && req.Scope != "relay" {
+		writeError(w, http.StatusBadRequest, "scope must be admin or relay")
+		return
+	}
+
+	key, err := auth.NewAPIKey()
+	if err != nil {
+		s.logger.Error("generate api key failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "api key creation failed")
+		return
+	}
+	digest, err := auth.HashAPIKey(key, s.cfg.APIKeyPepper)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "api key creation failed")
+		return
+	}
+	apiKey := models.APIKey{
+		ID:           uuid.NewString(),
+		Name:         strings.TrimSpace(req.Name),
+		Digest:       digest,
+		Scope:        req.Scope,
+		CreatedAt:    time.Now().UTC(),
+		PlaintextKey: key,
+	}
+	if err := s.store.CreateAPIKey(r.Context(), apiKey); err != nil {
+		s.logger.Error("persist api key failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "api key creation failed")
+		return
+	}
+	writeJSON(w, http.StatusCreated, apiKey)
+}
+
+func (s *Server) handleAPIKeyList(w http.ResponseWriter, r *http.Request) {
+	apiKeys, err := s.store.ListAPIKeys(r.Context())
+	if err != nil {
+		s.logger.Error("list api keys failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "list api keys failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, apiKeys)
 }
 
 func (s *Server) handleRelayHeartbeat(w http.ResponseWriter, r *http.Request) {
@@ -180,6 +253,17 @@ func (s *Server) handleDeviceRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now().UTC()
+	deviceToken, err := auth.NewAPIKey()
+	if err != nil {
+		s.logger.Error("generate device token failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "device registration failed")
+		return
+	}
+	deviceTokenHash, err := auth.HashAPIKey(deviceToken, s.cfg.APIKeyPepper)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "device registration failed")
+		return
+	}
 	device := models.Device{
 		ID:          uuid.NewString(),
 		UserID:      invitation.UserID,
@@ -187,6 +271,8 @@ func (s *Server) handleDeviceRegister(w http.ResponseWriter, r *http.Request) {
 		Name:        strings.TrimSpace(req.Name),
 		VirtualIP:   virtualIPFromUUID(uuid.New()),
 		PublicKey:   strings.TrimSpace(req.PublicKey),
+		TokenHash:   deviceTokenHash,
+		DeviceToken: deviceToken,
 		Status:      models.DeviceStatusOnline,
 		LastSeenAt:  now,
 		CreatedAt:   now,
@@ -212,6 +298,36 @@ func (s *Server) handleDeviceRegister(w http.ResponseWriter, r *http.Request) {
 		Relays:  relays,
 		Message: "device registered",
 	})
+}
+
+func (s *Server) handleDeviceHealth(w http.ResponseWriter, r *http.Request) {
+	deviceID := r.PathValue("id")
+	deviceToken := r.Header.Get(linkbitapi.HeaderDeviceToken)
+	if deviceID == "" || deviceToken == "" {
+		writeError(w, http.StatusUnauthorized, "device id and token are required")
+		return
+	}
+	tokenHash, err := auth.HashAPIKey(deviceToken, s.cfg.APIKeyPepper)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "invalid device token")
+		return
+	}
+	var report models.DeviceHealthReport
+	if err := decodeJSON(w, r, &report); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid health payload")
+		return
+	}
+	device, err := s.store.UpdateDeviceHealth(r.Context(), deviceID, tokenHash, report)
+	if store.IsNotFound(err) {
+		writeError(w, http.StatusUnauthorized, "invalid device token")
+		return
+	}
+	if err != nil {
+		s.logger.Error("device health update failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "health update failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, device)
 }
 
 func (s *Server) handleInvitationCreate(w http.ResponseWriter, r *http.Request) {
@@ -310,12 +426,30 @@ func (s *Server) handlePolicyList(w http.ResponseWriter, r *http.Request) {
 func (s *Server) requireAPIKey(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		apiKey := r.Header.Get(linkbitapi.HeaderAPIKey)
-		if !auth.VerifyAPIKey(apiKey, s.adminDigest, s.cfg.APIKeyPepper) {
+		if !s.verifyAdminAPIKey(r, apiKey) {
 			writeError(w, http.StatusUnauthorized, "invalid api key")
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (s *Server) verifyAdminAPIKey(r *http.Request, apiKey string) bool {
+	if auth.VerifyAPIKey(apiKey, s.adminDigest, s.cfg.APIKeyPepper) {
+		return true
+	}
+	digest, err := auth.HashAPIKey(apiKey, s.cfg.APIKeyPepper)
+	if err != nil {
+		return false
+	}
+	stored, err := s.store.GetAPIKeyByDigest(r.Context(), digest)
+	if err != nil || stored.Scope != "admin" {
+		return false
+	}
+	if err := s.store.TouchAPIKey(r.Context(), stored.ID); err != nil {
+		s.logger.Warn("failed to touch api key", "err", err)
+	}
+	return true
 }
 
 func securityHeaders(next http.Handler) http.Handler {
