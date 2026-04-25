@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 210 20% 98%;
+  --foreground: 222 22% 12%;
+  --border: 214 18% 86%;
+  --muted: 210 16% 93%;
+  --muted-foreground: 215 12% 42%;
+  --primary: 168 76% 28%;
+  --primary-foreground: 0 0% 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+

@@ -1,0 +1,30 @@
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+bin/
+dist/
+coverage/
+.tools/
+artifacts/
+*.test
+*.out
+*.tsbuildinfo
+
+# Go workspace/runtime
+*.db
+*.db-shm
+*.db-wal
+
+# Node
+node_modules/
+web/node_modules/
+web/dist/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+config/*.local.*
+*.key
+*.pem

@@ -1,0 +1,118 @@
+import { z } from "zod";
+
+const API_KEY_STORAGE = "linkbit.adminApiKey";
+
+const overviewSchema = z.object({
+  onlineDevices: z.number(),
+  totalDevices: z.number(),
+  relayNodes: z.number(),
+  healthyRelays: z.number(),
+  policyCount: z.number(),
+  networkHealth: z.string(),
+  averageLoad: z.number()
+});
+
+const deviceSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  groupId: z.string(),
+  name: z.string(),
+  virtualIp: z.string(),
+  publicKey: z.string(),
+  status: z.string(),
+  lastSeenAt: z.string(),
+  createdAt: z.string(),
+  fingerprint: z.string()
+});
+
+const relaySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  region: z.string(),
+  publicUrl: z.string(),
+  status: z.string(),
+  load: z.number(),
+  lastSeenAt: z.string()
+});
+
+const policySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  sourceId: z.string(),
+  targetId: z.string(),
+  ports: z.array(z.string()),
+  protocol: z.string(),
+  enabled: z.boolean()
+});
+
+const invitationSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  groupId: z.string(),
+  reusable: z.boolean(),
+  expiresAt: z.string(),
+  createdAt: z.string(),
+  token: z.string().optional()
+});
+
+export type Overview = z.infer<typeof overviewSchema>;
+export type Device = z.infer<typeof deviceSchema>;
+export type RelayNode = z.infer<typeof relaySchema>;
+export type NetworkPolicy = z.infer<typeof policySchema>;
+export type Invitation = z.infer<typeof invitationSchema>;
+
+export function getStoredAPIKey() {
+  return window.localStorage.getItem(API_KEY_STORAGE) ?? "";
+}
+
+export function storeAPIKey(value: string) {
+  window.localStorage.setItem(API_KEY_STORAGE, value.trim());
+}
+
+export async function getOverview(apiKey: string) {
+  return overviewSchema.parse(await request("/api/v1/overview", apiKey));
+}
+
+export async function getDevices(apiKey: string) {
+  return z.array(deviceSchema).parse(await request("/api/v1/devices", apiKey));
+}
+
+export async function getRelays(apiKey: string) {
+  return z.array(relaySchema).parse(await request("/api/v1/relays", apiKey));
+}
+
+export async function getPolicies(apiKey: string) {
+  return z.array(policySchema).parse(await request("/api/v1/policies", apiKey));
+}
+
+export async function createInvitation(apiKey: string, reusable = false) {
+  return invitationSchema.parse(
+    await request("/api/v1/invitations", apiKey, {
+      method: "POST",
+      body: JSON.stringify({
+        userId: "default-user",
+        groupId: "default",
+        reusable,
+        expiresInSeconds: 86400
+      })
+    })
+  );
+}
+
+async function request(path: string, apiKey: string, init: RequestInit = {}) {
+  const resp = await fetch(path, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Linkbit-API-Key": apiKey,
+      ...init.headers
+    }
+  });
+  const payload = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    const message = typeof payload.error === "string" ? payload.error : resp.statusText;
+    throw new Error(message);
+  }
+  return payload;
+}
+

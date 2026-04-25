@@ -1,0 +1,55 @@
+version: 2
+
+project_name: linkbit
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: controller
+    main: ./cmd/linkbit-controller
+    binary: linkbit-controller
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X github.com/linkbit/linkbit/internal/version.Version={{.Version}}
+      - -X github.com/linkbit/linkbit/internal/version.Commit={{.Commit}}
+      - -X github.com/linkbit/linkbit/internal/version.Date={{.Date}}
+  - id: relay
+    main: ./cmd/linkbit-relay
+    binary: linkbit-relay
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X github.com/linkbit/linkbit/internal/version.Version={{.Version}}
+      - -X github.com/linkbit/linkbit/internal/version.Commit={{.Commit}}
+      - -X github.com/linkbit/linkbit/internal/version.Date={{.Date}}
+  - id: agent
+    main: ./cmd/linkbit-agent
+    binary: linkbit-agent
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X github.com/linkbit/linkbit/internal/version.Version={{.Version}}
+      - -X github.com/linkbit/linkbit/internal/version.Commit={{.Commit}}
+      - -X github.com/linkbit/linkbit/internal/version.Date={{.Date}}
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+checksum:
+  name_template: checksums.txt
+
