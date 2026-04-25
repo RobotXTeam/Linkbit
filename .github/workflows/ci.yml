@@ -15,6 +15,9 @@ jobs:
         with:
           go-version-file: go.mod
       - run: go test ./...
+      - run: ./scripts/smoke-api.sh
+      - run: ./scripts/stress-api.sh
+      - run: ./scripts/relay-recovery-smoke.sh
 
   web:
     runs-on: ubuntu-latest
@@ -32,4 +35,3 @@ jobs:
       - run: npm run typecheck
       - run: npm audit --audit-level=moderate
       - run: npm run build
-
