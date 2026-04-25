@@ -50,4 +50,5 @@ WantedBy=multi-user.target
 SERVICE
 
 systemctl daemon-reload
-systemctl enable --now linkbit-controller
+systemctl enable linkbit-controller
+systemctl restart linkbit-controller

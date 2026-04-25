@@ -37,5 +37,5 @@ WantedBy=multi-user.target
 SERVICE
 
 systemctl daemon-reload
-systemctl enable --now linkbit-agent
-
+systemctl enable linkbit-agent
+systemctl restart linkbit-agent

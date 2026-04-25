@@ -34,5 +34,5 @@ WantedBy=multi-user.target
 SERVICE
 
 systemctl daemon-reload
-systemctl enable --now linkbit-relay
-
+systemctl enable linkbit-relay
+systemctl restart linkbit-relay
