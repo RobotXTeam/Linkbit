@@ -38,7 +38,7 @@ func NewWireGuardManager(cfg config.AgentConfig, runner CommandRunner) *WireGuar
 
 func (m *WireGuardManager) Apply(ctx context.Context, network models.NetworkConfig) error {
 	if m.cfg.WireGuardDryRun {
-		return m.applyCommands(ctx, network, "")
+		return validateNetworkConfig(m.cfg, network)
 	}
 	if runtime.GOOS != "linux" {
 		return errors.New("wireguard command manager currently supports linux only")
@@ -58,8 +58,21 @@ func (m *WireGuardManager) Destroy(ctx context.Context) error {
 	if m.cfg.WireGuardInterface == "" {
 		return errors.New("wireguard interface is required")
 	}
-	if m.cfg.WireGuardDryRun || runtime.GOOS == "linux" {
+	if m.cfg.WireGuardDryRun {
+		return nil
+	}
+	if runtime.GOOS == "linux" {
 		return m.runner.Run(ctx, "ip", "link", "del", m.cfg.WireGuardInterface)
+	}
+	return nil
+}
+
+func validateNetworkConfig(cfg config.AgentConfig, network models.NetworkConfig) error {
+	if cfg.WireGuardInterface == "" {
+		return errors.New("wireguard interface is required")
+	}
+	if network.Device.VirtualIP == "" {
+		return errors.New("registered device virtual IP is required")
 	}
 	return nil
 }

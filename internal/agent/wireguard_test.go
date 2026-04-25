@@ -33,6 +33,32 @@ func TestWireGuardManagerDryRun(t *testing.T) {
 		t.Fatalf("Apply() error = %v", err)
 	}
 
+	if len(runner.commands) != 0 {
+		t.Fatalf("dry-run executed commands: %v", runner.commands)
+	}
+	if err := manager.Destroy(t.Context()); err != nil {
+		t.Fatalf("Destroy() error = %v", err)
+	}
+	if len(runner.commands) != 0 {
+		t.Fatalf("dry-run destroy executed commands: %v", runner.commands)
+	}
+}
+
+func TestWireGuardManagerBuildsLinuxCommands(t *testing.T) {
+	runner := &recordingRunner{}
+	manager := NewWireGuardManager(config.AgentConfig{
+		WireGuardInterface:  "linkbit0",
+		WireGuardPrivateKey: "private-key",
+	}, runner)
+
+	err := manager.Apply(t.Context(), models.NetworkConfig{
+		Device: models.Device{VirtualIP: "100.96.1.2"},
+		Peers:  []models.NetworkPeer{{VirtualIP: "100.96.1.3", PublicKey: "peer-public-key"}},
+	})
+	if err != nil {
+		t.Fatalf("Apply() error = %v", err)
+	}
+
 	joined := strings.Join(runner.commands, "\n")
 	for _, want := range []string{
 		"ip link add dev linkbit0 type wireguard",
