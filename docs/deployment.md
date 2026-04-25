@@ -72,6 +72,8 @@ make stress
 make recovery-smoke
 ```
 
+Prometheus-compatible metrics are exposed at `/metrics` and require `X-Linkbit-API-Key`.
+
 ## Agent
 
 Required environment:

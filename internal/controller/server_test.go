@@ -84,6 +84,14 @@ func TestPersistentAPIKeyAuthenticates(t *testing.T) {
 	if listRec.Code != http.StatusOK {
 		t.Fatalf("list status = %d, want %d; body=%s", listRec.Code, http.StatusOK, listRec.Body.String())
 	}
+
+	metricsReq := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	metricsReq.Header.Set(linkbitapi.HeaderAPIKey, apiKey.PlaintextKey)
+	metricsRec := httptest.NewRecorder()
+	handler.ServeHTTP(metricsRec, metricsReq)
+	if metricsRec.Code != http.StatusOK {
+		t.Fatalf("metrics status = %d, want %d; body=%s", metricsRec.Code, http.StatusOK, metricsRec.Body.String())
+	}
 }
 
 func TestInvitationRegistersDeviceOnce(t *testing.T) {

@@ -1,0 +1,126 @@
+openapi: 3.1.0
+info:
+  title: Linkbit Controller API
+  version: 0.1.0
+servers:
+  - url: https://controller.example.com
+security:
+  - ApiKeyAuth: []
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Linkbit-API-Key
+    DeviceTokenAuth:
+      type: apiKey
+      in: header
+      name: X-Linkbit-Device-Token
+paths:
+  /healthz:
+    get:
+      security: []
+      responses:
+        "200":
+          description: Healthy
+  /api/v1/overview:
+    get:
+      responses:
+        "200":
+          description: Dashboard overview
+  /api/v1/users:
+    get:
+      responses:
+        "200":
+          description: List users
+    post:
+      responses:
+        "201":
+          description: Create user
+  /api/v1/groups:
+    get:
+      responses:
+        "200":
+          description: List device groups
+    post:
+      responses:
+        "201":
+          description: Create device group
+  /api/v1/relays:
+    get:
+      responses:
+        "200":
+          description: List relays
+  /api/v1/relays/register:
+    post:
+      responses:
+        "201":
+          description: Register relay
+  /api/v1/relays/{id}:
+    delete:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+  /api/v1/derp-map:
+    get:
+      responses:
+        "200":
+          description: Tailscale-compatible DERP map
+  /api/v1/invitations:
+    post:
+      responses:
+        "201":
+          description: Create enrollment invitation
+  /api/v1/devices:
+    get:
+      responses:
+        "200":
+          description: List devices
+  /api/v1/devices/register:
+    post:
+      security: []
+      responses:
+        "201":
+          description: Register device
+  /api/v1/devices/{id}/health:
+    post:
+      security:
+        - DeviceTokenAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Health accepted
+  /api/v1/devices/{id}/network-config:
+    get:
+      security:
+        - DeviceTokenAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Device network config
+  /api/v1/policies:
+    get:
+      responses:
+        "200":
+          description: List policies
+    post:
+      responses:
+        "201":
+          description: Create policy
+

@@ -47,6 +47,7 @@ func NewServer(cfg config.ControllerConfig, logger *slog.Logger, bootstrapAPIKey
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.handleHealth)
+	mux.Handle("GET /metrics", s.requireAPIKey(http.HandlerFunc(s.handleMetrics)))
 	mux.Handle("GET /api/v1/overview", s.requireAPIKey(http.HandlerFunc(s.handleOverview)))
 	mux.Handle("POST /api/v1/users", s.requireAPIKey(http.HandlerFunc(s.handleUserCreate)))
 	mux.Handle("GET /api/v1/users", s.requireAPIKey(http.HandlerFunc(s.handleUserList)))
@@ -81,6 +82,21 @@ func (s *Server) handleOverview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, overview)
+}
+
+func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
+	overview, err := s.store.Overview(r.Context())
+	if err != nil {
+		s.logger.Error("metrics overview failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "metrics failed")
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; version=0.0.4")
+	fmt.Fprintf(w, "linkbit_devices_total %d\n", overview.TotalDevices)
+	fmt.Fprintf(w, "linkbit_devices_online %d\n", overview.OnlineDevices)
+	fmt.Fprintf(w, "linkbit_relays_total %d\n", overview.RelayNodes)
+	fmt.Fprintf(w, "linkbit_relays_healthy %d\n", overview.HealthyRelays)
+	fmt.Fprintf(w, "linkbit_policies_total %d\n", overview.PolicyCount)
 }
 
 func (s *Server) handleDERPMap(w http.ResponseWriter, r *http.Request) {
