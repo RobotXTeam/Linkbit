@@ -27,6 +27,8 @@ sudo ./deploy/install-controller.sh
 Create `/etc/linkbit/controller.env` with secret values before starting the service.
 Use `deploy/controller.env.example` as the non-secret template.
 
+The controller can serve the built web console directly when `LINKBIT_WEB_DIR` points to the web build directory.
+
 ## Relay
 
 Required environment:
@@ -46,6 +48,20 @@ Install:
 sudo ./deploy/install-relay.sh
 ```
 
+## Docker Compose
+
+Copy templates and fill secrets:
+
+```bash
+cp deploy/controller.env.example deploy/controller.env
+cp deploy/relay.env.example deploy/relay.env
+docker compose -f deploy/compose.yml up -d --build
+```
+
+## TLS
+
+`deploy/Caddyfile.example` contains a Caddy reverse-proxy template for automatic HTTPS.
+
 ## Agent
 
 Required environment:
@@ -57,3 +73,10 @@ Required environment:
 
 The Linux agent performs controller registration, creates a WireGuard interface through `ip` and `wg`, and reports health back to the controller with a device-scoped token.
 Use `deploy/agent.env.example` as the non-secret template.
+
+Install:
+
+```bash
+./scripts/build-linux-amd64.sh
+sudo ./deploy/install-agent.sh
+```

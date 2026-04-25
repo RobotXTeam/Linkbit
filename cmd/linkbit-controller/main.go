@@ -39,8 +39,8 @@ func main() {
 		log.Fatalf("create controller: %v", err)
 	}
 
-	logger.Info("starting linkbit-controller", "addr", cfg.ListenAddr, "version", version.Version)
-	if err := http.ListenAndServe(cfg.ListenAddr, server.Handler()); err != nil {
+	logger.Info("starting linkbit-controller", "addr", cfg.ListenAddr, "version", version.Version, "web_dir", cfg.WebDir)
+	if err := http.ListenAndServe(cfg.ListenAddr, server.WithStatic(server.Handler())); err != nil {
 		log.Fatalf("controller stopped: %v", err)
 	}
 }

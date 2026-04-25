@@ -10,35 +10,32 @@ install_dir="${LINKBIT_INSTALL_DIR:-/opt/linkbit}"
 config_dir="${LINKBIT_CONFIG_DIR:-/etc/linkbit}"
 
 mkdir -p "$install_dir" "$config_dir"
-mkdir -p /var/lib/linkbit
-install -m 0755 ./bin/linkbit-controller "$install_dir/linkbit-controller"
-if [ -d ./web/dist ]; then
-  rm -rf "$install_dir/web"
-  mkdir -p "$install_dir/web"
-  cp -R ./web/dist/. "$install_dir/web/"
-fi
+install -m 0755 ./bin/linkbit-agent "$install_dir/linkbit-agent"
 
-cat > /etc/systemd/system/linkbit-controller.service <<'SERVICE'
+cat > /etc/systemd/system/linkbit-agent.service <<'SERVICE'
 [Unit]
-Description=Linkbit Controller
+Description=Linkbit Agent
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-EnvironmentFile=/etc/linkbit/controller.env
-ExecStart=/opt/linkbit/linkbit-controller
+EnvironmentFile=/etc/linkbit/agent.env
+ExecStart=/opt/linkbit/linkbit-agent
 Restart=on-failure
 RestartSec=3
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/linkbit
+ReadWritePaths=/run /tmp
 
 [Install]
 WantedBy=multi-user.target
 SERVICE
 
 systemctl daemon-reload
-systemctl enable --now linkbit-controller
+systemctl enable --now linkbit-agent
+

@@ -1,0 +1,26 @@
+services:
+  controller:
+    build:
+      context: ..
+      target: controller
+    restart: unless-stopped
+    env_file:
+      - ./controller.env
+    ports:
+      - "8080:8080"
+    volumes:
+      - linkbit-data:/var/lib/linkbit
+
+  relay:
+    build:
+      context: ..
+      target: relay
+    restart: unless-stopped
+    env_file:
+      - ./relay.env
+    ports:
+      - "8443:8443"
+
+volumes:
+  linkbit-data:
+

@@ -4,6 +4,7 @@ project_name: linkbit
 
 before:
   hooks:
+    - sh -c "cd web && npm ci && npm run build"
     - go mod tidy
 
 builds:
@@ -52,4 +53,3 @@ archives:
 
 checksum:
   name_template: checksums.txt
-

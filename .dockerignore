@@ -1,0 +1,10 @@
+.git
+.tools
+artifacts
+bin
+web/node_modules
+web/dist
+*.db
+*.db-shm
+*.db-wal
+
