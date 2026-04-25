@@ -28,6 +28,7 @@ type Store interface {
 	CreateAPIKey(context.Context, models.APIKey) error
 	GetAPIKeyByDigest(context.Context, string) (models.APIKey, error)
 	TouchAPIKey(context.Context, string) error
+	RevokeAPIKey(context.Context, string) error
 	ListAPIKeys(context.Context) ([]models.APIKey, error)
 
 	CreateInvitation(context.Context, models.Invitation) error
@@ -40,6 +41,7 @@ type Store interface {
 	ListDevices(context.Context) ([]models.Device, error)
 
 	CreatePolicy(context.Context, models.NetworkPolicy) error
+	DeletePolicy(context.Context, string) error
 	ListPolicies(context.Context) ([]models.NetworkPolicy, error)
 
 	Overview(context.Context) (models.Overview, error)

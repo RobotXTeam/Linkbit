@@ -8,6 +8,7 @@ import {
   createInvitation,
   createPolicy,
   createUser,
+  deletePolicy,
   deleteRelay,
   getDERPMap,
   getAPIKeys,
@@ -19,6 +20,7 @@ import {
   getStoredAPIKey,
   getUsers,
   registerRelay,
+  revokeAPIKey,
   storeAPIKey
 } from "../lib/api";
 
@@ -125,6 +127,18 @@ export function DashboardPage() {
   });
   const removeRelay = useMutation({
     mutationFn: (id: string) => deleteRelay(apiKey, id),
+    onSuccess: () => {
+      queryKeys.forEach((key) => void queryClient.invalidateQueries({ queryKey: [key, apiKey] }));
+    }
+  });
+  const removePolicy = useMutation({
+    mutationFn: (id: string) => deletePolicy(apiKey, id),
+    onSuccess: () => {
+      queryKeys.forEach((key) => void queryClient.invalidateQueries({ queryKey: [key, apiKey] }));
+    }
+  });
+  const revokeKey = useMutation({
+    mutationFn: (id: string) => revokeAPIKey(apiKey, id),
     onSuccess: () => {
       queryKeys.forEach((key) => void queryClient.invalidateQueries({ queryKey: [key, apiKey] }));
     }
@@ -354,9 +368,14 @@ export function DashboardPage() {
               <div className="rounded-md border border-dashed border-border p-6 text-sm text-muted-foreground">暂无策略</div>
             ) : (
               (policies.data ?? []).map((policy) => (
-                <div key={policy.id} className="rounded-md border border-border p-3 text-sm">
-                  <div className="font-medium">{policy.name}</div>
-                  <div className="mt-1 text-muted-foreground">{policy.sourceId} → {policy.targetId}</div>
+                <div key={policy.id} className="flex items-start justify-between gap-3 rounded-md border border-border p-3 text-sm">
+                  <div>
+                    <div className="font-medium">{policy.name}</div>
+                    <div className="mt-1 text-muted-foreground">{policy.sourceId} → {policy.targetId}</div>
+                  </div>
+                  <Button variant="ghost" onClick={() => removePolicy.mutate(policy.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               ))
             )}
@@ -434,9 +453,19 @@ export function DashboardPage() {
             <div className="rounded-md border border-dashed border-border p-6 text-sm text-muted-foreground">暂无持久密钥</div>
           ) : (
             (apiKeys.data ?? []).map((item) => (
-              <div key={item.id} className="grid gap-1 rounded-md border border-border p-3 text-sm">
-                <div className="font-medium">{item.name}</div>
-                <div className="text-muted-foreground">{item.scope} · {new Date(item.createdAt).toLocaleString()}</div>
+              <div key={item.id} className="flex items-start justify-between gap-3 rounded-md border border-border p-3 text-sm">
+                <div>
+                  <div className="font-medium">{item.name}</div>
+                  <div className="text-muted-foreground">
+                    {item.scope} · {new Date(item.createdAt).toLocaleString()}
+                    {item.revokedAt ? " · revoked" : ""}
+                  </div>
+                </div>
+                {!item.revokedAt ? (
+                  <Button variant="ghost" onClick={() => revokeKey.mutate(item.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                ) : null}
               </div>
             ))
           )}

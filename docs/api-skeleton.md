@@ -107,6 +107,28 @@ Optional JSON fields:
 - `reusable`
 - `expiresInSeconds`
 
+## API Keys
+
+`POST /api/v1/api-keys`
+
+Creates a scoped API key. The plaintext key is returned only once; subsequent list responses never include the secret value.
+
+Required JSON fields:
+
+- `name`
+
+Optional JSON fields:
+
+- `scope` (`admin` or `relay`, defaults to `admin`)
+
+`GET /api/v1/api-keys`
+
+Lists API key metadata and revocation state.
+
+`DELETE /api/v1/api-keys/{id}`
+
+Revokes a persisted API key. The bootstrap key is configured from the controller environment and is not revocable through this API.
+
 ## Network Policies
 
 `POST /api/v1/policies`
@@ -122,3 +144,7 @@ Required JSON fields:
 `GET /api/v1/policies`
 
 Returns network policies.
+
+`DELETE /api/v1/policies/{id}`
+
+Deletes a network policy.

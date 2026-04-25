@@ -56,6 +56,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/derp-map", s.requireAPIKey(http.HandlerFunc(s.handleDERPMap)))
 	mux.Handle("POST /api/v1/api-keys", s.requireAPIKey(http.HandlerFunc(s.handleAPIKeyCreate)))
 	mux.Handle("GET /api/v1/api-keys", s.requireAPIKey(http.HandlerFunc(s.handleAPIKeyList)))
+	mux.Handle("DELETE /api/v1/api-keys/{id}", s.requireAPIKey(http.HandlerFunc(s.handleAPIKeyRevoke)))
 	mux.Handle("POST /api/v1/relays/register", s.requireAPIKeyScopes(http.HandlerFunc(s.handleRelayRegister), "admin", "relay"))
 	mux.Handle("DELETE /api/v1/relays/{id}", s.requireAPIKey(http.HandlerFunc(s.handleRelayDelete)))
 	mux.Handle("POST /api/v1/relays/heartbeat", s.requireAPIKeyScopes(http.HandlerFunc(s.handleRelayHeartbeat), "admin", "relay"))
@@ -67,6 +68,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/v1/invitations", s.requireAPIKey(http.HandlerFunc(s.handleInvitationCreate)))
 	mux.Handle("POST /api/v1/policies", s.requireAPIKey(http.HandlerFunc(s.handlePolicyCreate)))
 	mux.Handle("GET /api/v1/policies", s.requireAPIKey(http.HandlerFunc(s.handlePolicyList)))
+	mux.Handle("DELETE /api/v1/policies/{id}", s.requireAPIKey(http.HandlerFunc(s.handlePolicyDelete)))
 	return securityHeaders(mux)
 }
 
@@ -284,6 +286,23 @@ func (s *Server) handleAPIKeyList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, apiKeys)
+}
+
+func (s *Server) handleAPIKeyRevoke(w http.ResponseWriter, r *http.Request) {
+	keyID := r.PathValue("id")
+	if keyID == "" {
+		writeError(w, http.StatusBadRequest, "api key id is required")
+		return
+	}
+	if err := s.store.RevokeAPIKey(r.Context(), keyID); store.IsNotFound(err) {
+		writeError(w, http.StatusNotFound, "api key not found")
+		return
+	} else if err != nil {
+		s.logger.Error("revoke api key failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "api key revoke failed")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) handleRelayHeartbeat(w http.ResponseWriter, r *http.Request) {
@@ -599,6 +618,23 @@ func (s *Server) handlePolicyList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, policies)
+}
+
+func (s *Server) handlePolicyDelete(w http.ResponseWriter, r *http.Request) {
+	policyID := r.PathValue("id")
+	if policyID == "" {
+		writeError(w, http.StatusBadRequest, "policy id is required")
+		return
+	}
+	if err := s.store.DeletePolicy(r.Context(), policyID); store.IsNotFound(err) {
+		writeError(w, http.StatusNotFound, "policy not found")
+		return
+	} else if err != nil {
+		s.logger.Error("delete policy failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "policy deletion failed")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) requireAPIKey(next http.Handler) http.Handler {

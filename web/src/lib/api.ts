@@ -61,6 +61,7 @@ const apiKeySchema = z.object({
   scope: z.string(),
   createdAt: z.string(),
   lastUsedAt: z.string().optional(),
+  revokedAt: z.string().optional(),
   key: z.string().optional()
 });
 
@@ -167,6 +168,10 @@ export async function getAPIKeys(apiKey: string) {
   return z.array(apiKeySchema).parse(await request("/api/v1/api-keys", apiKey));
 }
 
+export async function revokeAPIKey(apiKey: string, id: string) {
+  await request(`/api/v1/api-keys/${encodeURIComponent(id)}`, apiKey, { method: "DELETE" });
+}
+
 export async function createAPIKey(apiKey: string, scope: "admin" | "relay") {
   return apiKeySchema.parse(
     await request("/api/v1/api-keys", apiKey, {
@@ -191,6 +196,10 @@ export async function createPolicy(apiKey: string, input: { id: string; name: st
       })
     })
   );
+}
+
+export async function deletePolicy(apiKey: string, id: string) {
+  await request(`/api/v1/policies/${encodeURIComponent(id)}`, apiKey, { method: "DELETE" });
 }
 
 export async function createInvitation(apiKey: string, input: { userId: string; groupId: string; reusable?: boolean }) {

@@ -92,6 +92,22 @@ func TestPersistentAPIKeyAuthenticates(t *testing.T) {
 	if metricsRec.Code != http.StatusOK {
 		t.Fatalf("metrics status = %d, want %d; body=%s", metricsRec.Code, http.StatusOK, metricsRec.Body.String())
 	}
+
+	revokeReq := httptest.NewRequest(http.MethodDelete, "/api/v1/api-keys/"+apiKey.ID, nil)
+	revokeReq.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
+	revokeRec := httptest.NewRecorder()
+	handler.ServeHTTP(revokeRec, revokeReq)
+	if revokeRec.Code != http.StatusNoContent {
+		t.Fatalf("revoke status = %d, want %d; body=%s", revokeRec.Code, http.StatusNoContent, revokeRec.Body.String())
+	}
+
+	revokedReq := httptest.NewRequest(http.MethodGet, "/api/v1/relays", nil)
+	revokedReq.Header.Set(linkbitapi.HeaderAPIKey, apiKey.PlaintextKey)
+	revokedRec := httptest.NewRecorder()
+	handler.ServeHTTP(revokedRec, revokedReq)
+	if revokedRec.Code != http.StatusUnauthorized {
+		t.Fatalf("revoked key status = %d, want %d; body=%s", revokedRec.Code, http.StatusUnauthorized, revokedRec.Body.String())
+	}
 }
 
 func TestRelayScopedAPIKeyCanRegisterRelayOnly(t *testing.T) {
@@ -200,6 +216,35 @@ func TestInvitationRequiresKnownUserAndGroup(t *testing.T) {
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func TestPolicyDelete(t *testing.T) {
+	server := newTestServer(t)
+	handler := server.Handler()
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/policies", bytes.NewBufferString(`{"id":"policy-1","name":"Policy 1","sourceId":"*","targetId":"default","ports":["*"],"protocol":"tcp","enabled":true}`))
+	createReq.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
+	createRec := httptest.NewRecorder()
+	handler.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("create policy status = %d, want %d; body=%s", createRec.Code, http.StatusCreated, createRec.Body.String())
+	}
+
+	deleteReq := httptest.NewRequest(http.MethodDelete, "/api/v1/policies/policy-1", nil)
+	deleteReq.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
+	deleteRec := httptest.NewRecorder()
+	handler.ServeHTTP(deleteRec, deleteReq)
+	if deleteRec.Code != http.StatusNoContent {
+		t.Fatalf("delete policy status = %d, want %d; body=%s", deleteRec.Code, http.StatusNoContent, deleteRec.Body.String())
+	}
+
+	deleteAgainReq := httptest.NewRequest(http.MethodDelete, "/api/v1/policies/policy-1", nil)
+	deleteAgainReq.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
+	deleteAgainRec := httptest.NewRecorder()
+	handler.ServeHTTP(deleteAgainRec, deleteAgainReq)
+	if deleteAgainRec.Code != http.StatusNotFound {
+		t.Fatalf("second delete status = %d, want %d; body=%s", deleteAgainRec.Code, http.StatusNotFound, deleteAgainRec.Body.String())
 	}
 }
 

@@ -209,6 +209,21 @@ func (s *Store) TouchAPIKey(ctx context.Context, id string) error {
 	return err
 }
 
+func (s *Store) RevokeAPIKey(ctx context.Context, id string) error {
+	res, err := s.db.ExecContext(ctx, `UPDATE api_keys SET revoked_at = ? WHERE id = ? AND revoked_at = ''`, formatTime(time.Now().UTC()), id)
+	if err != nil {
+		return err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
 func (s *Store) ListAPIKeys(ctx context.Context) ([]models.APIKey, error) {
 	rows, err := s.db.QueryContext(ctx, `
 SELECT id, name, digest, scope, created_at, last_used_at, revoked_at
@@ -382,6 +397,21 @@ INSERT INTO policies (id, name, source_id, target_id, ports_json, protocol, enab
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `, policy.ID, policy.Name, policy.SourceID, policy.TargetID, string(ports), policy.Protocol, boolInt(policy.Enabled), policy.Description, formatTime(policy.CreatedAt), formatTime(policy.UpdatedAt))
 	return err
+}
+
+func (s *Store) DeletePolicy(ctx context.Context, id string) error {
+	res, err := s.db.ExecContext(ctx, `DELETE FROM policies WHERE id = ?`, id)
+	if err != nil {
+		return err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 func (s *Store) ListPolicies(ctx context.Context) ([]models.NetworkPolicy, error) {

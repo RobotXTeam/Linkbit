@@ -72,6 +72,28 @@ paths:
       responses:
         "200":
           description: Tailscale-compatible DERP map
+  /api/v1/api-keys:
+    get:
+      responses:
+        "200":
+          description: List API keys without plaintext key material
+    post:
+      responses:
+        "201":
+          description: Create API key and return plaintext key once
+  /api/v1/api-keys/{id}:
+    delete:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Revoked
+        "404":
+          description: API key not found or already revoked
   /api/v1/invitations:
     post:
       responses:
@@ -123,4 +145,16 @@ paths:
       responses:
         "201":
           description: Create policy
-
+  /api/v1/policies/{id}:
+    delete:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Policy not found
