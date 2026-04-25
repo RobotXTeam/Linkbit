@@ -62,6 +62,16 @@ docker compose -f deploy/compose.yml up -d --build
 
 `deploy/Caddyfile.example` contains a Caddy reverse-proxy template for automatic HTTPS.
 
+## Verification
+
+Local API checks:
+
+```bash
+make smoke
+make stress
+make recovery-smoke
+```
+
 ## Agent
 
 Required environment:

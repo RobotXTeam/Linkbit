@@ -1,4 +1,4 @@
-.PHONY: check test smoke web-install web-typecheck
+.PHONY: check test smoke stress recovery-smoke web-install web-typecheck
 
 GO ?= $(if $(wildcard .tools/go/bin/go),.tools/go/bin/go,go)
 
@@ -10,6 +10,12 @@ test:
 
 smoke:
 	./scripts/smoke-api.sh
+
+stress:
+	./scripts/stress-api.sh
+
+recovery-smoke:
+	./scripts/relay-recovery-smoke.sh
 
 web-install:
 	cd web && npm install

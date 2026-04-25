@@ -51,5 +51,17 @@ archives:
       - goos: windows
         formats: [zip]
 
+nfpms:
+  - id: linux-packages
+    package_name: linkbit
+    vendor: Linkbit
+    homepage: https://github.com/RobotXTeam/Linkbit
+    maintainer: Linkbit Maintainers
+    description: Self-hosted secure low-latency communication platform.
+    license: Apache-2.0
+    formats:
+      - deb
+      - rpm
+
 checksum:
   name_template: checksums.txt
