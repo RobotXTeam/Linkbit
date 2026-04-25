@@ -94,6 +94,40 @@ func TestPersistentAPIKeyAuthenticates(t *testing.T) {
 	}
 }
 
+func TestRelayScopedAPIKeyCanRegisterRelayOnly(t *testing.T) {
+	server := newTestServer(t)
+	handler := server.Handler()
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/api-keys", bytes.NewBufferString(`{"name":"relay","scope":"relay"}`))
+	createReq.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
+	createRec := httptest.NewRecorder()
+	handler.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("create key status = %d, want %d; body=%s", createRec.Code, http.StatusCreated, createRec.Body.String())
+	}
+
+	var apiKey models.APIKey
+	if err := json.NewDecoder(createRec.Body).Decode(&apiKey); err != nil {
+		t.Fatalf("decode api key: %v", err)
+	}
+
+	relayReq := httptest.NewRequest(http.MethodPost, "/api/v1/relays/register", bytes.NewBufferString(`{"id":"relay-scoped","name":"Relay","region":"test","publicUrl":"https://relay.example.com"}`))
+	relayReq.Header.Set(linkbitapi.HeaderAPIKey, apiKey.PlaintextKey)
+	relayRec := httptest.NewRecorder()
+	handler.ServeHTTP(relayRec, relayReq)
+	if relayRec.Code != http.StatusCreated {
+		t.Fatalf("relay register status = %d, want %d; body=%s", relayRec.Code, http.StatusCreated, relayRec.Body.String())
+	}
+
+	usersReq := httptest.NewRequest(http.MethodGet, "/api/v1/users", nil)
+	usersReq.Header.Set(linkbitapi.HeaderAPIKey, apiKey.PlaintextKey)
+	usersRec := httptest.NewRecorder()
+	handler.ServeHTTP(usersRec, usersReq)
+	if usersRec.Code != http.StatusUnauthorized {
+		t.Fatalf("users status = %d, want %d; body=%s", usersRec.Code, http.StatusUnauthorized, usersRec.Body.String())
+	}
+}
+
 func TestInvitationRegistersDeviceOnce(t *testing.T) {
 	server := newTestServer(t)
 	handler := server.Handler()

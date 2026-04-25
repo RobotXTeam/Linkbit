@@ -56,9 +56,9 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/derp-map", s.requireAPIKey(http.HandlerFunc(s.handleDERPMap)))
 	mux.Handle("POST /api/v1/api-keys", s.requireAPIKey(http.HandlerFunc(s.handleAPIKeyCreate)))
 	mux.Handle("GET /api/v1/api-keys", s.requireAPIKey(http.HandlerFunc(s.handleAPIKeyList)))
-	mux.Handle("POST /api/v1/relays/register", s.requireAPIKey(http.HandlerFunc(s.handleRelayRegister)))
+	mux.Handle("POST /api/v1/relays/register", s.requireAPIKeyScopes(http.HandlerFunc(s.handleRelayRegister), "admin", "relay"))
 	mux.Handle("DELETE /api/v1/relays/{id}", s.requireAPIKey(http.HandlerFunc(s.handleRelayDelete)))
-	mux.Handle("POST /api/v1/relays/heartbeat", s.requireAPIKey(http.HandlerFunc(s.handleRelayHeartbeat)))
+	mux.Handle("POST /api/v1/relays/heartbeat", s.requireAPIKeyScopes(http.HandlerFunc(s.handleRelayHeartbeat), "admin", "relay"))
 	mux.Handle("GET /api/v1/relays", s.requireAPIKey(http.HandlerFunc(s.handleRelayList)))
 	mux.Handle("GET /api/v1/devices", s.requireAPIKey(http.HandlerFunc(s.handleDeviceList)))
 	mux.HandleFunc("POST /api/v1/devices/register", s.handleDeviceRegister)
@@ -602,9 +602,13 @@ func (s *Server) handlePolicyList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) requireAPIKey(next http.Handler) http.Handler {
+	return s.requireAPIKeyScopes(next, "admin")
+}
+
+func (s *Server) requireAPIKeyScopes(next http.Handler, scopes ...string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		apiKey := r.Header.Get(linkbitapi.HeaderAPIKey)
-		if !s.verifyAdminAPIKey(r, apiKey) {
+		if !s.verifyAPIKeyScope(r, apiKey, scopes...) {
 			writeError(w, http.StatusUnauthorized, "invalid api key")
 			return
 		}
@@ -612,8 +616,8 @@ func (s *Server) requireAPIKey(next http.Handler) http.Handler {
 	})
 }
 
-func (s *Server) verifyAdminAPIKey(r *http.Request, apiKey string) bool {
-	if auth.VerifyAPIKey(apiKey, s.adminDigest, s.cfg.APIKeyPepper) {
+func (s *Server) verifyAPIKeyScope(r *http.Request, apiKey string, scopes ...string) bool {
+	if scopeAllowed("admin", scopes) && auth.VerifyAPIKey(apiKey, s.adminDigest, s.cfg.APIKeyPepper) {
 		return true
 	}
 	digest, err := auth.HashAPIKey(apiKey, s.cfg.APIKeyPepper)
@@ -621,13 +625,25 @@ func (s *Server) verifyAdminAPIKey(r *http.Request, apiKey string) bool {
 		return false
 	}
 	stored, err := s.store.GetAPIKeyByDigest(r.Context(), digest)
-	if err != nil || stored.Scope != "admin" {
+	if err != nil {
+		return false
+	}
+	if !scopeAllowed(stored.Scope, scopes) {
 		return false
 	}
 	if err := s.store.TouchAPIKey(r.Context(), stored.ID); err != nil {
 		s.logger.Warn("failed to touch api key", "err", err)
 	}
 	return true
+}
+
+func scopeAllowed(actual string, allowed []string) bool {
+	for _, scope := range allowed {
+		if actual == scope {
+			return true
+		}
+	}
+	return false
 }
 
 func securityHeaders(next http.Handler) http.Handler {

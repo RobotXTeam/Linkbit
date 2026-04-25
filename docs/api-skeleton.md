@@ -61,6 +61,7 @@ Returns a Tailscale-compatible `tailcfg.DERPMap` generated from registered relay
 `POST /api/v1/relays/register`
 
 Registers a relay node with controller-managed metadata.
+Accepts `admin` or `relay` API key scope.
 
 Required JSON fields:
 
@@ -70,6 +71,7 @@ Required JSON fields:
 `POST /api/v1/relays/heartbeat`
 
 Refreshes relay liveness and load metrics.
+Accepts `admin` or `relay` API key scope.
 
 Required JSON fields:
 
