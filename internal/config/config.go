@@ -28,10 +28,14 @@ type RelayConfig struct {
 }
 
 type AgentConfig struct {
-	ControllerURL string
-	EnrollmentKey string
-	DeviceName    string
-	HealthEvery   time.Duration
+	ControllerURL       string
+	EnrollmentKey       string
+	DeviceName          string
+	HealthEvery         time.Duration
+	WireGuardInterface  string
+	WireGuardPrivateKey string
+	WireGuardPublicKey  string
+	WireGuardDryRun     bool
 }
 
 func LoadController() (ControllerConfig, error) {
@@ -62,10 +66,14 @@ func LoadRelay() RelayConfig {
 
 func LoadAgent() AgentConfig {
 	return AgentConfig{
-		ControllerURL: os.Getenv("LINKBIT_CONTROLLER_URL"),
-		EnrollmentKey: os.Getenv("LINKBIT_ENROLLMENT_KEY"),
-		DeviceName:    getenv("LINKBIT_DEVICE_NAME", hostname()),
-		HealthEvery:   getenvDuration("LINKBIT_HEALTH_SECONDS", 30*time.Second),
+		ControllerURL:       os.Getenv("LINKBIT_CONTROLLER_URL"),
+		EnrollmentKey:       os.Getenv("LINKBIT_ENROLLMENT_KEY"),
+		DeviceName:          getenv("LINKBIT_DEVICE_NAME", hostname()),
+		HealthEvery:         getenvDuration("LINKBIT_HEALTH_SECONDS", 30*time.Second),
+		WireGuardInterface:  getenv("LINKBIT_WG_INTERFACE", "linkbit0"),
+		WireGuardPrivateKey: os.Getenv("LINKBIT_WG_PRIVATE_KEY"),
+		WireGuardPublicKey:  os.Getenv("LINKBIT_WG_PUBLIC_KEY"),
+		WireGuardDryRun:     getenvBool("LINKBIT_WG_DRY_RUN", false),
 	}
 }
 
@@ -87,6 +95,18 @@ func getenvDuration(key string, fallback time.Duration) time.Duration {
 		return fallback
 	}
 	return time.Duration(seconds) * time.Second
+}
+
+func getenvBool(key string, fallback bool) bool {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return fallback
+	}
+	return parsed
 }
 
 func hostname() string {

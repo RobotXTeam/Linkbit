@@ -53,5 +53,7 @@ Required environment:
 - `LINKBIT_CONTROLLER_URL`
 - `LINKBIT_ENROLLMENT_KEY`
 - `LINKBIT_WG_PUBLIC_KEY`
+- `LINKBIT_WG_PRIVATE_KEY`
 
-The agent currently performs controller registration. WireGuard tunnel control and tray integration are isolated behind interfaces for OS-specific implementations.
+The Linux agent performs controller registration, creates a WireGuard interface through `ip` and `wg`, and reports health back to the controller with a device-scoped token.
+Use `deploy/agent.env.example` as the non-secret template.

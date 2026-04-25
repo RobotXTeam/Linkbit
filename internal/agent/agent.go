@@ -15,12 +15,12 @@ type RegistrationClient interface {
 }
 
 type TunnelManager interface {
-	Apply(ctx context.Context) error
+	Apply(ctx context.Context, registration models.DeviceRegistrationResponse) error
 	Destroy(ctx context.Context) error
 }
 
 type HealthReporter interface {
-	CheckAndReport(ctx context.Context) error
+	CheckAndReport(ctx context.Context, registration models.DeviceRegistrationResponse) error
 }
 
 type Service struct {
@@ -58,7 +58,7 @@ func (s *Service) Run(ctx context.Context) error {
 		s.logger.Info("device registered", "device_id", registration.Device.ID, "virtual_ip", registration.Device.VirtualIP)
 	}
 	if s.tunnel != nil {
-		if err := s.tunnel.Apply(ctx); err != nil {
+		if err := s.tunnel.Apply(ctx, s.device); err != nil {
 			return err
 		}
 		defer func() {
@@ -76,7 +76,7 @@ func (s *Service) Run(ctx context.Context) error {
 			return ctx.Err()
 		case <-ticker.C:
 			if s.health != nil {
-				if err := s.health.CheckAndReport(ctx); err != nil {
+				if err := s.health.CheckAndReport(ctx, s.device); err != nil {
 					s.logger.Warn("health report failed", "err", err)
 				}
 			}
