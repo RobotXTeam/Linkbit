@@ -10,30 +10,29 @@ install_dir="${LINKBIT_INSTALL_DIR:-/opt/linkbit}"
 config_dir="${LINKBIT_CONFIG_DIR:-/etc/linkbit}"
 
 mkdir -p "$install_dir" "$config_dir"
-mkdir -p /var/lib/linkbit
-install -m 0755 ./bin/linkbit-controller "$install_dir/linkbit-controller"
+install -m 0755 ./bin/linkbit-relay "$install_dir/linkbit-relay"
 
-cat > /etc/systemd/system/linkbit-controller.service <<'SERVICE'
+cat > /etc/systemd/system/linkbit-relay.service <<'SERVICE'
 [Unit]
-Description=Linkbit Controller
+Description=Linkbit Relay
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-EnvironmentFile=/etc/linkbit/controller.env
-ExecStart=/opt/linkbit/linkbit-controller
+EnvironmentFile=/etc/linkbit/relay.env
+ExecStart=/opt/linkbit/linkbit-relay
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/linkbit
 
 [Install]
 WantedBy=multi-user.target
 SERVICE
 
 systemctl daemon-reload
-systemctl enable --now linkbit-controller
+systemctl enable --now linkbit-relay
+

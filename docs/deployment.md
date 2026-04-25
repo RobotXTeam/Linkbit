@@ -25,6 +25,7 @@ sudo ./deploy/install-controller.sh
 ```
 
 Create `/etc/linkbit/controller.env` with secret values before starting the service.
+Use `deploy/controller.env.example` as the non-secret template.
 
 ## Relay
 
@@ -36,6 +37,14 @@ Required environment:
 - `LINKBIT_RELAY_PUBLIC_URL`
 
 The relay currently performs controller registration and heartbeat. The DERP protocol server is isolated behind `internal/relay.DERPService` for the next integration step.
+Use `deploy/relay.env.example` as the non-secret template.
+
+Install:
+
+```bash
+./scripts/build-linux-amd64.sh
+sudo ./deploy/install-relay.sh
+```
 
 ## Agent
 
@@ -46,4 +55,3 @@ Required environment:
 - `LINKBIT_WG_PUBLIC_KEY`
 
 The agent currently performs controller registration. WireGuard tunnel control and tray integration are isolated behind interfaces for OS-specific implementations.
-
