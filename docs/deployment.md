@@ -28,6 +28,8 @@ Create `/etc/linkbit/controller.env` with secret values before starting the serv
 Use `deploy/controller.env.example` as the non-secret template.
 
 The controller can serve the built web console directly when `LINKBIT_WEB_DIR` points to the web build directory.
+For a direct single-server deployment without a reverse proxy, set `LINKBIT_LISTEN_ADDR=:80` and `LINKBIT_PUBLIC_URL=http://<server-ip>`.
+For a reverse-proxy deployment, keep the controller on an internal port such as `:8080` and expose only the proxy on `80/443`.
 
 ## Relay
 
@@ -40,6 +42,8 @@ Required environment:
 
 The relay performs controller registration, heartbeat, and runs a DERP-compatible HTTP service mounted at `/derp`.
 Use `deploy/relay.env.example` as the non-secret template.
+For a direct single-server deployment, set `LINKBIT_LISTEN_ADDR=:443` and `LINKBIT_RELAY_PUBLIC_URL=http://<server-ip>:443`.
+For a reverse-proxy deployment, keep the relay on an internal port such as `:8443` and proxy public HTTPS traffic to it.
 
 Install:
 
@@ -87,11 +91,36 @@ LINKBIT_API_KEY=replace-me \
 ./scripts/render-deploy-env.sh
 ```
 
+Direct public-IP install using already-open `80/443`:
+
+```bash
+LINKBIT_CONTROLLER_URL=http://203.0.113.10 \
+LINKBIT_PUBLIC_URL=http://203.0.113.10 \
+LINKBIT_RELAY_PUBLIC_URL=http://203.0.113.10:443 \
+LINKBIT_CONTROLLER_LISTEN_ADDR=:80 \
+LINKBIT_RELAY_LISTEN_ADDR=:443 \
+LINKBIT_API_KEY_PEPPER=replace-me \
+LINKBIT_BOOTSTRAP_API_KEY=replace-me \
+LINKBIT_API_KEY=replace-me \
+./scripts/render-deploy-env.sh
+```
+
 Upload binaries and install scripts:
 
 ```bash
 LINKBIT_REMOTE_HOST=root@example.com ./scripts/remote-install.sh
 ```
+
+After copying `deploy/generated/controller.env` and `deploy/generated/relay.env` into `/etc/linkbit/` on the server and running the install scripts, verify the public surface:
+
+```bash
+LINKBIT_CONTROLLER_URL=http://203.0.113.10 \
+LINKBIT_RELAY_PUBLIC_URL=http://203.0.113.10:443 \
+LINKBIT_API_KEY=replace-with-admin-or-bootstrap-key \
+make remote-health
+```
+
+The remote installer uploads the built console from `web/dist` and the controller install script accepts both `./web/dist` and already-flattened `./web` layouts.
 
 ## Agent
 

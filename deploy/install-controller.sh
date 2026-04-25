@@ -12,10 +12,19 @@ config_dir="${LINKBIT_CONFIG_DIR:-/etc/linkbit}"
 mkdir -p "$install_dir" "$config_dir"
 mkdir -p /var/lib/linkbit
 install -m 0755 ./bin/linkbit-controller "$install_dir/linkbit-controller"
-if [ -d ./web/dist ]; then
+
+# Accept both repository layout (./web/dist) and remote upload layout (./web).
+# This keeps the install script portable across local installs and scp-based deploys.
+web_source=""
+if [ -f ./web/dist/index.html ]; then
+  web_source="./web/dist"
+elif [ -f ./web/index.html ]; then
+  web_source="./web"
+fi
+if [ -n "$web_source" ]; then
   rm -rf "$install_dir/web"
   mkdir -p "$install_dir/web"
-  cp -R ./web/dist/. "$install_dir/web/"
+  cp -R "$web_source"/. "$install_dir/web/"
 fi
 
 cat > /etc/systemd/system/linkbit-controller.service <<'SERVICE'
