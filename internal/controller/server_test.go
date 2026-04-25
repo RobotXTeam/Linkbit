@@ -90,6 +90,9 @@ func TestInvitationRegistersDeviceOnce(t *testing.T) {
 	server := newTestServer(t)
 	handler := server.Handler()
 
+	createUser(t, handler, "user-1")
+	createGroup(t, handler, "ops")
+
 	inviteReq := httptest.NewRequest(http.MethodPost, "/api/v1/invitations", bytes.NewBufferString(`{"userId":"user-1","groupId":"ops","expiresInSeconds":3600}`))
 	inviteReq.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
 	inviteRec := httptest.NewRecorder()
@@ -142,6 +145,41 @@ func TestInvitationRegistersDeviceOnce(t *testing.T) {
 	handler.ServeHTTP(registerAgainRec, registerAgainReq)
 	if registerAgainRec.Code != http.StatusConflict {
 		t.Fatalf("second register status = %d, want %d; body=%s", registerAgainRec.Code, http.StatusConflict, registerAgainRec.Body.String())
+	}
+}
+
+func TestInvitationRequiresKnownUserAndGroup(t *testing.T) {
+	server := newTestServer(t)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/invitations", bytes.NewBufferString(`{"userId":"missing","groupId":"missing","expiresInSeconds":3600}`))
+	req.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
+	rec := httptest.NewRecorder()
+
+	server.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func createUser(t *testing.T, handler http.Handler, id string) {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/users", bytes.NewBufferString(`{"id":"`+id+`","name":"Test User","role":"member"}`))
+	req.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create user status = %d, want %d; body=%s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+}
+
+func createGroup(t *testing.T, handler http.Handler, id string) {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/groups", bytes.NewBufferString(`{"id":"`+id+`","name":"Test Group"}`))
+	req.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create group status = %d, want %d; body=%s", rec.Code, http.StatusCreated, rec.Body.String())
 	}
 }
 

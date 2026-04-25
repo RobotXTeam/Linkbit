@@ -48,6 +48,10 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.handleHealth)
 	mux.Handle("GET /api/v1/overview", s.requireAPIKey(http.HandlerFunc(s.handleOverview)))
+	mux.Handle("POST /api/v1/users", s.requireAPIKey(http.HandlerFunc(s.handleUserCreate)))
+	mux.Handle("GET /api/v1/users", s.requireAPIKey(http.HandlerFunc(s.handleUserList)))
+	mux.Handle("POST /api/v1/groups", s.requireAPIKey(http.HandlerFunc(s.handleGroupCreate)))
+	mux.Handle("GET /api/v1/groups", s.requireAPIKey(http.HandlerFunc(s.handleGroupList)))
 	mux.Handle("GET /api/v1/derp-map", s.requireAPIKey(http.HandlerFunc(s.handleDERPMap)))
 	mux.Handle("POST /api/v1/api-keys", s.requireAPIKey(http.HandlerFunc(s.handleAPIKeyCreate)))
 	mux.Handle("GET /api/v1/api-keys", s.requireAPIKey(http.HandlerFunc(s.handleAPIKeyList)))
@@ -87,6 +91,88 @@ func (s *Server) handleDERPMap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, buildDERPMap(relays))
+}
+
+func (s *Server) handleUserCreate(w http.ResponseWriter, r *http.Request) {
+	var req models.UserCreateRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid user payload")
+		return
+	}
+	if strings.TrimSpace(req.Name) == "" {
+		writeError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+	if strings.TrimSpace(req.ID) == "" {
+		req.ID = uuid.NewString()
+	}
+	if req.Role == "" {
+		req.Role = "member"
+	}
+	if req.Role != "admin" && req.Role != "member" {
+		writeError(w, http.StatusBadRequest, "role must be admin or member")
+		return
+	}
+	user := models.User{
+		ID:        strings.TrimSpace(req.ID),
+		Name:      strings.TrimSpace(req.Name),
+		Email:     strings.TrimSpace(req.Email),
+		Role:      req.Role,
+		CreatedAt: time.Now().UTC(),
+	}
+	if err := s.store.CreateUser(r.Context(), user); err != nil {
+		s.logger.Error("create user failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "user creation failed")
+		return
+	}
+	writeJSON(w, http.StatusCreated, user)
+}
+
+func (s *Server) handleUserList(w http.ResponseWriter, r *http.Request) {
+	users, err := s.store.ListUsers(r.Context())
+	if err != nil {
+		s.logger.Error("list users failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "list users failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, users)
+}
+
+func (s *Server) handleGroupCreate(w http.ResponseWriter, r *http.Request) {
+	var req models.DeviceGroupCreateRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid group payload")
+		return
+	}
+	if strings.TrimSpace(req.Name) == "" {
+		writeError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+	if strings.TrimSpace(req.ID) == "" {
+		req.ID = uuid.NewString()
+	}
+	group := models.DeviceGroup{
+		ID:          strings.TrimSpace(req.ID),
+		Name:        strings.TrimSpace(req.Name),
+		Description: strings.TrimSpace(req.Description),
+		CreatedAt:   time.Now().UTC(),
+	}
+	if err := s.store.CreateGroup(r.Context(), group); err != nil {
+		s.logger.Error("create group failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "group creation failed")
+		return
+	}
+	writeJSON(w, http.StatusCreated, group)
+}
+
+func (s *Server) handleGroupList(w http.ResponseWriter, r *http.Request) {
+	groups, err := s.store.ListGroups(r.Context())
+	if err != nil {
+		s.logger.Error("list groups failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "list groups failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, groups)
 }
 
 func (s *Server) handleRelayRegister(w http.ResponseWriter, r *http.Request) {
@@ -410,6 +496,14 @@ func (s *Server) handleInvitationCreate(w http.ResponseWriter, r *http.Request) 
 	}
 	if strings.TrimSpace(req.GroupID) == "" {
 		req.GroupID = "default"
+	}
+	if _, err := s.store.GetUser(r.Context(), strings.TrimSpace(req.UserID)); err != nil {
+		writeError(w, http.StatusBadRequest, "userId does not exist")
+		return
+	}
+	if _, err := s.store.GetGroup(r.Context(), strings.TrimSpace(req.GroupID)); err != nil {
+		writeError(w, http.StatusBadRequest, "groupId does not exist")
+		return
 	}
 	expiresIn := time.Duration(req.ExpiresInSeconds) * time.Second
 	if expiresIn <= 0 {

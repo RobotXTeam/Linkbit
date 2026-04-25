@@ -25,6 +25,21 @@ const deviceSchema = z.object({
   fingerprint: z.string()
 });
 
+const userSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string().optional(),
+  role: z.string(),
+  createdAt: z.string()
+});
+
+const groupSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  createdAt: z.string()
+});
+
 const relaySchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -71,6 +86,8 @@ const invitationSchema = z.object({
 
 export type Overview = z.infer<typeof overviewSchema>;
 export type Device = z.infer<typeof deviceSchema>;
+export type User = z.infer<typeof userSchema>;
+export type DeviceGroup = z.infer<typeof groupSchema>;
 export type RelayNode = z.infer<typeof relaySchema>;
 export type NetworkPolicy = z.infer<typeof policySchema>;
 export type Invitation = z.infer<typeof invitationSchema>;
@@ -90,6 +107,32 @@ export async function getOverview(apiKey: string) {
 
 export async function getDevices(apiKey: string) {
   return z.array(deviceSchema).parse(await request("/api/v1/devices", apiKey));
+}
+
+export async function getUsers(apiKey: string) {
+  return z.array(userSchema).parse(await request("/api/v1/users", apiKey));
+}
+
+export async function createUser(apiKey: string, input: { id: string; name: string; email: string; role: string }) {
+  return userSchema.parse(
+    await request("/api/v1/users", apiKey, {
+      method: "POST",
+      body: JSON.stringify(input)
+    })
+  );
+}
+
+export async function getGroups(apiKey: string) {
+  return z.array(groupSchema).parse(await request("/api/v1/groups", apiKey));
+}
+
+export async function createGroup(apiKey: string, input: { id: string; name: string; description: string }) {
+  return groupSchema.parse(
+    await request("/api/v1/groups", apiKey, {
+      method: "POST",
+      body: JSON.stringify(input)
+    })
+  );
 }
 
 export async function getRelays(apiKey: string) {
@@ -136,14 +179,28 @@ export async function createAPIKey(apiKey: string, scope: "admin" | "relay") {
   );
 }
 
-export async function createInvitation(apiKey: string, reusable = false) {
+export async function createPolicy(apiKey: string, input: { id: string; name: string; sourceId: string; targetId: string }) {
+  return policySchema.parse(
+    await request("/api/v1/policies", apiKey, {
+      method: "POST",
+      body: JSON.stringify({
+        ...input,
+        protocol: "tcp",
+        ports: ["*"],
+        enabled: true
+      })
+    })
+  );
+}
+
+export async function createInvitation(apiKey: string, input: { userId: string; groupId: string; reusable?: boolean }) {
   return invitationSchema.parse(
     await request("/api/v1/invitations", apiKey, {
       method: "POST",
       body: JSON.stringify({
-        userId: "default-user",
-        groupId: "default",
-        reusable,
+        userId: input.userId,
+        groupId: input.groupId,
+        reusable: input.reusable ?? false,
         expiresInSeconds: 86400
       })
     })

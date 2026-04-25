@@ -12,6 +12,14 @@ type Store interface {
 	Migrate(context.Context) error
 	Close() error
 
+	CreateUser(context.Context, models.User) error
+	ListUsers(context.Context) ([]models.User, error)
+	GetUser(context.Context, string) (models.User, error)
+
+	CreateGroup(context.Context, models.DeviceGroup) error
+	ListGroups(context.Context) ([]models.DeviceGroup, error)
+	GetGroup(context.Context, string) (models.DeviceGroup, error)
+
 	UpsertRelay(context.Context, models.RelayNode) error
 	DeleteRelay(context.Context, string) error
 	HeartbeatRelay(context.Context, string, float64) (models.RelayNode, error)

@@ -34,6 +34,24 @@ Required header:
 
 Returns dashboard counters for devices, relay nodes, policies, and network health.
 
+## Users And Groups
+
+`POST /api/v1/users`
+
+Creates a user.
+
+`GET /api/v1/users`
+
+Lists users.
+
+`POST /api/v1/groups`
+
+Creates a device group.
+
+`GET /api/v1/groups`
+
+Lists device groups.
+
 ## Relay Registry
 
 `GET /api/v1/derp-map`

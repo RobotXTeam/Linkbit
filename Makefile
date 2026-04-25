@@ -1,4 +1,4 @@
-.PHONY: check test web-install web-typecheck
+.PHONY: check test smoke web-install web-typecheck
 
 GO ?= $(if $(wildcard .tools/go/bin/go),.tools/go/bin/go,go)
 
@@ -7,6 +7,9 @@ check:
 
 test:
 	$(GO) test ./...
+
+smoke:
+	./scripts/smoke-api.sh
 
 web-install:
 	cd web && npm install

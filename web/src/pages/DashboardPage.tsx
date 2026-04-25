@@ -4,20 +4,25 @@ import { useMemo, useState } from "react";
 import { Button } from "../components/ui/button";
 import {
   createAPIKey,
+  createGroup,
   createInvitation,
+  createPolicy,
+  createUser,
   deleteRelay,
   getDERPMap,
   getAPIKeys,
   getDevices,
+  getGroups,
   getOverview,
   getPolicies,
   getRelays,
   getStoredAPIKey,
+  getUsers,
   registerRelay,
   storeAPIKey
 } from "../lib/api";
 
-const queryKeys = ["overview", "devices", "relays", "policies", "apiKeys"] as const;
+const queryKeys = ["overview", "devices", "relays", "policies", "apiKeys", "users", "groups"] as const;
 
 export function DashboardPage() {
   const queryClient = useQueryClient();
@@ -25,6 +30,10 @@ export function DashboardPage() {
   const [apiKey, setApiKey] = useState(getStoredAPIKey);
   const [lastToken, setLastToken] = useState("");
   const [lastAPIKey, setLastAPIKey] = useState("");
+  const [userForm, setUserForm] = useState({ id: "default-user", name: "Default User", email: "", role: "member" });
+  const [groupForm, setGroupForm] = useState({ id: "default", name: "Default", description: "" });
+  const [policyForm, setPolicyForm] = useState({ id: "", name: "", sourceId: "*", targetId: "default" });
+  const [inviteForm, setInviteForm] = useState({ userId: "default-user", groupId: "default", reusable: false });
   const [relayForm, setRelayForm] = useState({
     id: "",
     name: "",
@@ -41,6 +50,16 @@ export function DashboardPage() {
   const devices = useQuery({
     queryKey: ["devices", apiKey],
     queryFn: () => getDevices(apiKey),
+    enabled
+  });
+  const users = useQuery({
+    queryKey: ["users", apiKey],
+    queryFn: () => getUsers(apiKey),
+    enabled
+  });
+  const groups = useQuery({
+    queryKey: ["groups", apiKey],
+    queryFn: () => getGroups(apiKey),
     enabled
   });
   const relays = useQuery({
@@ -65,9 +84,28 @@ export function DashboardPage() {
   });
 
   const invite = useMutation({
-    mutationFn: () => createInvitation(apiKey),
+    mutationFn: () => createInvitation(apiKey, inviteForm),
     onSuccess: (value) => {
       setLastToken(value.token ?? "");
+      queryKeys.forEach((key) => void queryClient.invalidateQueries({ queryKey: [key, apiKey] }));
+    }
+  });
+  const addUser = useMutation({
+    mutationFn: () => createUser(apiKey, userForm),
+    onSuccess: () => {
+      queryKeys.forEach((key) => void queryClient.invalidateQueries({ queryKey: [key, apiKey] }));
+    }
+  });
+  const addGroup = useMutation({
+    mutationFn: () => createGroup(apiKey, groupForm),
+    onSuccess: () => {
+      queryKeys.forEach((key) => void queryClient.invalidateQueries({ queryKey: [key, apiKey] }));
+    }
+  });
+  const addPolicy = useMutation({
+    mutationFn: () => createPolicy(apiKey, { ...policyForm, id: policyForm.id || crypto.randomUUID() }),
+    onSuccess: () => {
+      setPolicyForm({ id: "", name: "", sourceId: "*", targetId: "default" });
       queryKeys.forEach((key) => void queryClient.invalidateQueries({ queryKey: [key, apiKey] }));
     }
   });
@@ -170,6 +208,20 @@ export function DashboardPage() {
               生成
             </Button>
           </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <input
+              className="h-9 rounded-md border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+              placeholder="用户 ID"
+              value={inviteForm.userId}
+              onChange={(event) => setInviteForm((value) => ({ ...value, userId: event.target.value }))}
+            />
+            <input
+              className="h-9 rounded-md border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+              placeholder="设备组 ID"
+              value={inviteForm.groupId}
+              onChange={(event) => setInviteForm((value) => ({ ...value, groupId: event.target.value }))}
+            />
+          </div>
           {lastToken ? (
             <button
               className="mt-4 flex w-full items-center justify-between gap-3 rounded-md border border-border bg-muted p-3 text-left text-xs"
@@ -265,6 +317,38 @@ export function DashboardPage() {
         </div>
         <div className="rounded-lg border border-border bg-white p-4">
           <h2 className="text-base font-semibold">网络策略</h2>
+          <form
+            className="mt-4 grid gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              addPolicy.mutate();
+            }}
+          >
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input
+                className="h-9 rounded-md border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+                placeholder="来源设备/组/*"
+                value={policyForm.sourceId}
+                onChange={(event) => setPolicyForm((value) => ({ ...value, sourceId: event.target.value }))}
+              />
+              <input
+                className="h-9 rounded-md border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+                placeholder="目标设备/组"
+                value={policyForm.targetId}
+                onChange={(event) => setPolicyForm((value) => ({ ...value, targetId: event.target.value }))}
+              />
+              <input
+                className="h-9 rounded-md border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary sm:col-span-2"
+                placeholder="策略名称"
+                value={policyForm.name}
+                onChange={(event) => setPolicyForm((value) => ({ ...value, name: event.target.value }))}
+              />
+            </div>
+            <Button className="w-fit gap-2" disabled={!enabled || addPolicy.isPending}>
+              <Plus className="h-4 w-4" />
+              添加策略
+            </Button>
+          </form>
           <div className="mt-4 grid gap-2">
             {(policies.data ?? []).length === 0 ? (
               <div className="rounded-md border border-dashed border-border p-6 text-sm text-muted-foreground">暂无策略</div>
@@ -276,6 +360,69 @@ export function DashboardPage() {
                 </div>
               ))
             )}
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-6 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-lg border border-border bg-white p-4">
+          <h2 className="text-base font-semibold">用户</h2>
+          <form
+            className="mt-4 grid gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              addUser.mutate();
+            }}
+          >
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input className="h-9 rounded-md border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary" placeholder="用户 ID" value={userForm.id} onChange={(event) => setUserForm((value) => ({ ...value, id: event.target.value }))} />
+              <input className="h-9 rounded-md border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary" placeholder="名称" value={userForm.name} onChange={(event) => setUserForm((value) => ({ ...value, name: event.target.value }))} />
+              <input className="h-9 rounded-md border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary" placeholder="邮箱" value={userForm.email} onChange={(event) => setUserForm((value) => ({ ...value, email: event.target.value }))} />
+              <select className="h-9 rounded-md border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary" value={userForm.role} onChange={(event) => setUserForm((value) => ({ ...value, role: event.target.value }))}>
+                <option value="member">member</option>
+                <option value="admin">admin</option>
+              </select>
+            </div>
+            <Button className="w-fit gap-2" disabled={!enabled || addUser.isPending}>
+              <Plus className="h-4 w-4" />
+              添加用户
+            </Button>
+          </form>
+          <div className="mt-4 grid gap-2">
+            {(users.data ?? []).map((user) => (
+              <div key={user.id} className="rounded-md border border-border p-3 text-sm">
+                <div className="font-medium">{user.name}</div>
+                <div className="text-muted-foreground">{user.id} · {user.role}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-lg border border-border bg-white p-4">
+          <h2 className="text-base font-semibold">设备组</h2>
+          <form
+            className="mt-4 grid gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              addGroup.mutate();
+            }}
+          >
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input className="h-9 rounded-md border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary" placeholder="组 ID" value={groupForm.id} onChange={(event) => setGroupForm((value) => ({ ...value, id: event.target.value }))} />
+              <input className="h-9 rounded-md border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary" placeholder="名称" value={groupForm.name} onChange={(event) => setGroupForm((value) => ({ ...value, name: event.target.value }))} />
+              <input className="h-9 rounded-md border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary sm:col-span-2" placeholder="描述" value={groupForm.description} onChange={(event) => setGroupForm((value) => ({ ...value, description: event.target.value }))} />
+            </div>
+            <Button className="w-fit gap-2" disabled={!enabled || addGroup.isPending}>
+              <Plus className="h-4 w-4" />
+              添加设备组
+            </Button>
+          </form>
+          <div className="mt-4 grid gap-2">
+            {(groups.data ?? []).map((group) => (
+              <div key={group.id} className="rounded-md border border-border p-3 text-sm">
+                <div className="font-medium">{group.name}</div>
+                <div className="text-muted-foreground">{group.id}</div>
+              </div>
+            ))}
           </div>
         </div>
       </section>

@@ -49,6 +49,19 @@ CREATE TABLE IF NOT EXISTS relays (
 	last_seen_at TEXT NOT NULL,
 	registered TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS users (
+	id TEXT PRIMARY KEY,
+	name TEXT NOT NULL,
+	email TEXT NOT NULL DEFAULT '',
+	role TEXT NOT NULL,
+	created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS groups (
+	id TEXT PRIMARY KEY,
+	name TEXT NOT NULL,
+	description TEXT NOT NULL DEFAULT '',
+	created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS invitations (
 	id TEXT PRIMARY KEY,
 	token_hash TEXT NOT NULL UNIQUE,
@@ -107,6 +120,72 @@ CREATE TABLE IF NOT EXISTS policies (
 		}
 	}
 	return err
+}
+
+func (s *Store) CreateUser(ctx context.Context, user models.User) error {
+	_, err := s.db.ExecContext(ctx, `
+INSERT INTO users (id, name, email, role, created_at)
+VALUES (?, ?, ?, ?, ?)
+`, user.ID, user.Name, user.Email, user.Role, formatTime(user.CreatedAt))
+	return err
+}
+
+func (s *Store) ListUsers(ctx context.Context) ([]models.User, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT id, name, email, role, created_at FROM users ORDER BY created_at DESC
+`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []models.User
+	for rows.Next() {
+		user, err := scanUser(rows)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	return users, rows.Err()
+}
+
+func (s *Store) GetUser(ctx context.Context, id string) (models.User, error) {
+	row := s.db.QueryRowContext(ctx, `SELECT id, name, email, role, created_at FROM users WHERE id = ?`, id)
+	return scanUser(row)
+}
+
+func (s *Store) CreateGroup(ctx context.Context, group models.DeviceGroup) error {
+	_, err := s.db.ExecContext(ctx, `
+INSERT INTO groups (id, name, description, created_at)
+VALUES (?, ?, ?, ?)
+`, group.ID, group.Name, group.Description, formatTime(group.CreatedAt))
+	return err
+}
+
+func (s *Store) ListGroups(ctx context.Context) ([]models.DeviceGroup, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT id, name, description, created_at FROM groups ORDER BY created_at DESC
+`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var groups []models.DeviceGroup
+	for rows.Next() {
+		group, err := scanGroup(rows)
+		if err != nil {
+			return nil, err
+		}
+		groups = append(groups, group)
+	}
+	return groups, rows.Err()
+}
+
+func (s *Store) GetGroup(ctx context.Context, id string) (models.DeviceGroup, error) {
+	row := s.db.QueryRowContext(ctx, `SELECT id, name, description, created_at FROM groups WHERE id = ?`, id)
+	return scanGroup(row)
 }
 
 func (s *Store) CreateAPIKey(ctx context.Context, apiKey models.APIKey) error {
@@ -373,6 +452,28 @@ FROM devices WHERE id = ?
 
 type scanner interface {
 	Scan(dest ...any) error
+}
+
+func scanUser(row scanner) (models.User, error) {
+	var user models.User
+	var createdAt string
+	err := row.Scan(&user.ID, &user.Name, &user.Email, &user.Role, &createdAt)
+	if err != nil {
+		return user, err
+	}
+	user.CreatedAt = parseTime(createdAt)
+	return user, nil
+}
+
+func scanGroup(row scanner) (models.DeviceGroup, error) {
+	var group models.DeviceGroup
+	var createdAt string
+	err := row.Scan(&group.ID, &group.Name, &group.Description, &createdAt)
+	if err != nil {
+		return group, err
+	}
+	group.CreatedAt = parseTime(createdAt)
+	return group, nil
 }
 
 func scanRelay(row scanner) (models.RelayNode, error) {
