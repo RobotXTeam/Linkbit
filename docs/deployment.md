@@ -36,7 +36,7 @@ Required environment:
 - `LINKBIT_RELAY_ID`
 - `LINKBIT_RELAY_PUBLIC_URL`
 
-The relay currently performs controller registration and heartbeat. The DERP protocol server is isolated behind `internal/relay.DERPService` for the next integration step.
+The relay performs controller registration, heartbeat, and runs a DERP-compatible HTTP service mounted at `/derp`.
 Use `deploy/relay.env.example` as the non-secret template.
 
 Install:

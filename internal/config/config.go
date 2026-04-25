@@ -55,7 +55,7 @@ func LoadRelay() RelayConfig {
 		Name:          getenv("LINKBIT_RELAY_NAME", "linkbit-relay"),
 		PublicURL:     os.Getenv("LINKBIT_RELAY_PUBLIC_URL"),
 		Region:        getenv("LINKBIT_RELAY_REGION", "default"),
-		ListenAddr:    getenv("LINKBIT_LISTEN_ADDR", ":3478"),
+		ListenAddr:    getenv("LINKBIT_LISTEN_ADDR", ":8443"),
 		Heartbeat:     getenvDuration("LINKBIT_HEARTBEAT_SECONDS", 30*time.Second),
 	}
 }

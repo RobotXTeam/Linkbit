@@ -15,7 +15,12 @@ import (
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	node, err := relay.NewNode(config.LoadRelay(), nil, logger)
+	cfg := config.LoadRelay()
+	derpService, err := relay.NewDERPHTTPService(cfg.ListenAddr, logger)
+	if err != nil {
+		log.Fatalf("create derp service: %v", err)
+	}
+	node, err := relay.NewNode(cfg, derpService, logger)
 	if err != nil {
 		log.Fatalf("create relay: %v", err)
 	}

@@ -28,6 +28,10 @@ Returns dashboard counters for devices, relay nodes, policies, and network healt
 
 ## Relay Registry
 
+`GET /api/v1/derp-map`
+
+Returns a Tailscale-compatible `tailcfg.DERPMap` generated from registered relay nodes.
+
 `POST /api/v1/relays/register`
 
 Registers a relay node with controller-managed metadata.
@@ -48,6 +52,10 @@ Required JSON fields:
 `GET /api/v1/relays`
 
 Returns registered relay nodes.
+
+`DELETE /api/v1/relays/{id}`
+
+Removes a relay node from the controller registry.
 
 ## Device Registry
 

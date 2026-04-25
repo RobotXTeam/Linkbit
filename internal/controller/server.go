@@ -48,6 +48,7 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.handleHealth)
 	mux.Handle("GET /api/v1/overview", s.requireAPIKey(http.HandlerFunc(s.handleOverview)))
+	mux.Handle("GET /api/v1/derp-map", s.requireAPIKey(http.HandlerFunc(s.handleDERPMap)))
 	mux.Handle("POST /api/v1/api-keys", s.requireAPIKey(http.HandlerFunc(s.handleAPIKeyCreate)))
 	mux.Handle("GET /api/v1/api-keys", s.requireAPIKey(http.HandlerFunc(s.handleAPIKeyList)))
 	mux.Handle("POST /api/v1/relays/register", s.requireAPIKey(http.HandlerFunc(s.handleRelayRegister)))
@@ -75,6 +76,16 @@ func (s *Server) handleOverview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, overview)
+}
+
+func (s *Server) handleDERPMap(w http.ResponseWriter, r *http.Request) {
+	relays, err := s.store.ListRelays(r.Context())
+	if err != nil {
+		s.logger.Error("list relays for derp map failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "derp map failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, buildDERPMap(relays))
 }
 
 func (s *Server) handleRelayRegister(w http.ResponseWriter, r *http.Request) {

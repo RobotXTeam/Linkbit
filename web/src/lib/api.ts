@@ -35,6 +35,11 @@ const relaySchema = z.object({
   lastSeenAt: z.string()
 });
 
+const derpMapSchema = z.object({
+  Regions: z.record(z.string(), z.unknown()).optional(),
+  omitDefaultRegions: z.boolean().optional()
+});
+
 const apiKeySchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -89,6 +94,10 @@ export async function getDevices(apiKey: string) {
 
 export async function getRelays(apiKey: string) {
   return z.array(relaySchema).parse(await request("/api/v1/relays", apiKey));
+}
+
+export async function getDERPMap(apiKey: string) {
+  return derpMapSchema.parse(await request("/api/v1/derp-map", apiKey));
 }
 
 export async function registerRelay(

@@ -6,6 +6,7 @@ import {
   createAPIKey,
   createInvitation,
   deleteRelay,
+  getDERPMap,
   getAPIKeys,
   getDevices,
   getOverview,
@@ -45,6 +46,11 @@ export function DashboardPage() {
   const relays = useQuery({
     queryKey: ["relays", apiKey],
     queryFn: () => getRelays(apiKey),
+    enabled
+  });
+  const derpMap = useQuery({
+    queryKey: ["derpMap", apiKey],
+    queryFn: () => getDERPMap(apiKey),
     enabled
   });
   const policies = useQuery({
@@ -235,6 +241,9 @@ export function DashboardPage() {
               <Copy className="h-4 w-4 shrink-0" />
             </button>
           ) : null}
+          <div className="mt-4 rounded-md border border-border bg-muted p-3 text-sm text-muted-foreground">
+            DERP map 区域数：{Object.keys(derpMap.data?.Regions ?? {}).length}
+          </div>
           <div className="mt-4 grid gap-2">
             {(relays.data ?? []).length === 0 ? (
               <div className="rounded-md border border-dashed border-border p-6 text-sm text-muted-foreground">暂无中继节点</div>

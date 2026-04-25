@@ -40,6 +40,14 @@ func TestRelayRegistration(t *testing.T) {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusCreated, rec.Body.String())
 	}
 
+	derpReq := httptest.NewRequest(http.MethodGet, "/api/v1/derp-map", nil)
+	derpReq.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
+	derpRec := httptest.NewRecorder()
+	handler.ServeHTTP(derpRec, derpReq)
+	if derpRec.Code != http.StatusOK {
+		t.Fatalf("derp map status = %d, want %d; body=%s", derpRec.Code, http.StatusOK, derpRec.Body.String())
+	}
+
 	deleteReq := httptest.NewRequest(http.MethodDelete, "/api/v1/relays/relay-1", nil)
 	deleteReq.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
 	deleteRec := httptest.NewRecorder()
