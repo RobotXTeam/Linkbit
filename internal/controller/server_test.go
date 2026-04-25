@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/linkbit/linkbit/internal/config"
@@ -23,6 +24,37 @@ func TestRelayRegistrationRequiresAPIKey(t *testing.T) {
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestSettingsRequiresAPIKeyAndOmitsSecrets(t *testing.T) {
+	server := newTestServer(t)
+	handler := server.Handler()
+
+	unauthReq := httptest.NewRequest(http.MethodGet, "/api/v1/settings", nil)
+	unauthRec := httptest.NewRecorder()
+	handler.ServeHTTP(unauthRec, unauthReq)
+	if unauthRec.Code != http.StatusUnauthorized {
+		t.Fatalf("unauth settings status = %d, want %d", unauthRec.Code, http.StatusUnauthorized)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/settings", nil)
+	req.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("settings status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var settings models.ControllerSettings
+	if err := json.NewDecoder(rec.Body).Decode(&settings); err != nil {
+		t.Fatalf("decode settings: %v", err)
+	}
+	if settings.DatabaseBackend != "sqlite" || settings.LogLevel == "" {
+		t.Fatalf("unexpected settings: %+v", settings)
+	}
+	if strings.Contains(rec.Body.String(), "test-pepper") || strings.Contains(rec.Body.String(), "test-admin-key") {
+		t.Fatalf("settings leaked secrets: %s", rec.Body.String())
 	}
 }
 
@@ -284,6 +316,7 @@ func newTestServer(t *testing.T) *Server {
 		ListenAddr:   ":0",
 		DatabasePath: ":memory:",
 		APIKeyPepper: []byte("test-pepper"),
+		LogLevel:     "info",
 	}, slog.Default(), "test-admin-key", storage)
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)

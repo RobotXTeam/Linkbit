@@ -165,3 +165,11 @@ type Overview struct {
 	NetworkHealth string  `json:"networkHealth"`
 	AverageLoad   float64 `json:"averageLoad"`
 }
+
+type ControllerSettings struct {
+	PublicURL         string `json:"publicUrl"`
+	ListenAddr        string `json:"listenAddr"`
+	LogLevel          string `json:"logLevel"`
+	WebConsoleEnabled bool   `json:"webConsoleEnabled"`
+	DatabaseBackend   string `json:"databaseBackend"`
+}

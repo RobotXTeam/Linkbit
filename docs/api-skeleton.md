@@ -34,6 +34,10 @@ Required header:
 
 Returns dashboard counters for devices, relay nodes, policies, and network health.
 
+`GET /api/v1/settings`
+
+Returns non-secret controller runtime settings for the web console, including public URL, listen address, log level, web-console status, and database backend.
+
 ## Users And Groups
 
 `POST /api/v1/users`

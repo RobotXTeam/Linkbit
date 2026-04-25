@@ -12,6 +12,14 @@ const overviewSchema = z.object({
   averageLoad: z.number()
 });
 
+const settingsSchema = z.object({
+  publicUrl: z.string(),
+  listenAddr: z.string(),
+  logLevel: z.string(),
+  webConsoleEnabled: z.boolean(),
+  databaseBackend: z.string()
+});
+
 const deviceSchema = z.object({
   id: z.string(),
   userId: z.string(),
@@ -86,6 +94,7 @@ const invitationSchema = z.object({
 });
 
 export type Overview = z.infer<typeof overviewSchema>;
+export type ControllerSettings = z.infer<typeof settingsSchema>;
 export type Device = z.infer<typeof deviceSchema>;
 export type User = z.infer<typeof userSchema>;
 export type DeviceGroup = z.infer<typeof groupSchema>;
@@ -104,6 +113,10 @@ export function storeAPIKey(value: string) {
 
 export async function getOverview(apiKey: string) {
   return overviewSchema.parse(await request("/api/v1/overview", apiKey));
+}
+
+export async function getSettings(apiKey: string) {
+  return settingsSchema.parse(await request("/api/v1/settings", apiKey));
 }
 
 export async function getDevices(apiKey: string) {

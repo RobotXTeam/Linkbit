@@ -15,6 +15,7 @@ relay_region="${LINKBIT_RELAY_REGION:-default}"
 api_key_pepper="${LINKBIT_API_KEY_PEPPER:?LINKBIT_API_KEY_PEPPER is required}"
 bootstrap_key="${LINKBIT_BOOTSTRAP_API_KEY:?LINKBIT_BOOTSTRAP_API_KEY is required}"
 relay_key="${LINKBIT_API_KEY:?LINKBIT_API_KEY is required}"
+log_level="${LINKBIT_LOG_LEVEL:-info}"
 
 cat > "$out_dir/controller.env" <<EOF
 LINKBIT_LISTEN_ADDR=$controller_listen_addr
@@ -23,6 +24,7 @@ LINKBIT_DATABASE_PATH=/var/lib/linkbit/linkbit.db
 LINKBIT_API_KEY_PEPPER=$api_key_pepper
 LINKBIT_BOOTSTRAP_API_KEY=$bootstrap_key
 LINKBIT_WEB_DIR=/opt/linkbit/web
+LINKBIT_LOG_LEVEL=$log_level
 EOF
 
 cat > "$out_dir/relay.env" <<EOF

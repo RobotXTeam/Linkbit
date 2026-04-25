@@ -49,6 +49,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", s.handleHealth)
 	mux.Handle("GET /metrics", s.requireAPIKey(http.HandlerFunc(s.handleMetrics)))
 	mux.Handle("GET /api/v1/overview", s.requireAPIKey(http.HandlerFunc(s.handleOverview)))
+	mux.Handle("GET /api/v1/settings", s.requireAPIKey(http.HandlerFunc(s.handleSettings)))
 	mux.Handle("POST /api/v1/users", s.requireAPIKey(http.HandlerFunc(s.handleUserCreate)))
 	mux.Handle("GET /api/v1/users", s.requireAPIKey(http.HandlerFunc(s.handleUserList)))
 	mux.Handle("POST /api/v1/groups", s.requireAPIKey(http.HandlerFunc(s.handleGroupCreate)))
@@ -84,6 +85,16 @@ func (s *Server) handleOverview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, overview)
+}
+
+func (s *Server) handleSettings(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, models.ControllerSettings{
+		PublicURL:         s.cfg.PublicURL,
+		ListenAddr:        s.cfg.ListenAddr,
+		LogLevel:          s.cfg.LogLevel,
+		WebConsoleEnabled: s.cfg.WebDir != "",
+		DatabaseBackend:   "sqlite",
+	})
 }
 
 func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {

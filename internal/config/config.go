@@ -15,6 +15,7 @@ type ControllerConfig struct {
 	DatabasePath string
 	APIKeyPepper []byte
 	WebDir       string
+	LogLevel     string
 }
 
 type RelayConfig struct {
@@ -46,6 +47,7 @@ func LoadController() (ControllerConfig, error) {
 		DatabasePath: getenv("LINKBIT_DATABASE_PATH", "linkbit.db"),
 		APIKeyPepper: []byte(os.Getenv("LINKBIT_API_KEY_PEPPER")),
 		WebDir:       os.Getenv("LINKBIT_WEB_DIR"),
+		LogLevel:     getenv("LINKBIT_LOG_LEVEL", "info"),
 	}
 	if len(cfg.APIKeyPepper) == 0 {
 		return cfg, errors.New("LINKBIT_API_KEY_PEPPER is required")

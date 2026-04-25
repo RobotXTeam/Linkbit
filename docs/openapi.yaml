@@ -28,6 +28,11 @@ paths:
       responses:
         "200":
           description: Dashboard overview
+  /api/v1/settings:
+    get:
+      responses:
+        "200":
+          description: Non-secret controller runtime settings
   /api/v1/users:
     get:
       responses:

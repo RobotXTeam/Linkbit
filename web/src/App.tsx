@@ -1,4 +1,4 @@
-import { Activity, Network, Server, ShieldCheck } from "lucide-react";
+import { Activity, Network, Server, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { DashboardPage } from "./pages/DashboardPage";
 
@@ -6,7 +6,8 @@ const navItems = [
   { label: "仪表盘", icon: Activity },
   { label: "设备", icon: Network },
   { label: "中继", icon: Server },
-  { label: "策略", icon: ShieldCheck }
+  { label: "策略", icon: ShieldCheck },
+  { label: "设置", icon: SlidersHorizontal }
 ];
 
 export function App() {
@@ -29,4 +30,3 @@ export function App() {
     </main>
   );
 }
-

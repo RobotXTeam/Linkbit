@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/linkbit/linkbit/internal/config"
 	"github.com/linkbit/linkbit/internal/controller"
@@ -24,7 +25,9 @@ func main() {
 		log.Fatal("LINKBIT_BOOTSTRAP_API_KEY is required")
 	}
 
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	level := new(slog.LevelVar)
+	level.Set(parseLogLevel(cfg.LogLevel))
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
 	storage, err := sqlitestore.New(cfg.DatabasePath)
 	if err != nil {
 		log.Fatalf("open store: %v", err)
@@ -42,5 +45,18 @@ func main() {
 	logger.Info("starting linkbit-controller", "addr", cfg.ListenAddr, "version", version.Version, "web_dir", cfg.WebDir)
 	if err := http.ListenAndServe(cfg.ListenAddr, server.WithStatic(server.Handler())); err != nil {
 		log.Fatalf("controller stopped: %v", err)
+	}
+}
+
+func parseLogLevel(value string) slog.Level {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "debug":
+		return slog.LevelDebug
+	case "warn", "warning":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
 	}
 }

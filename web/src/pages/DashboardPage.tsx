@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Cpu, Gauge, KeyRound, Plus, RadioTower, Server, Trash2 } from "lucide-react";
+import { Copy, Cpu, Gauge, KeyRound, Plus, RadioTower, Server, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "../components/ui/button";
 import {
@@ -17,6 +17,7 @@ import {
   getOverview,
   getPolicies,
   getRelays,
+  getSettings,
   getStoredAPIKey,
   getUsers,
   registerRelay,
@@ -24,7 +25,7 @@ import {
   storeAPIKey
 } from "../lib/api";
 
-const queryKeys = ["overview", "devices", "relays", "policies", "apiKeys", "users", "groups"] as const;
+const queryKeys = ["overview", "devices", "relays", "policies", "apiKeys", "users", "groups", "settings"] as const;
 
 export function DashboardPage() {
   const queryClient = useQueryClient();
@@ -47,6 +48,11 @@ export function DashboardPage() {
   const overview = useQuery({
     queryKey: ["overview", apiKey],
     queryFn: () => getOverview(apiKey),
+    enabled
+  });
+  const settings = useQuery({
+    queryKey: ["settings", apiKey],
+    queryFn: () => getSettings(apiKey),
     enabled
   });
   const devices = useQuery({
@@ -471,6 +477,31 @@ export function DashboardPage() {
           )}
         </div>
       </section>
+
+      <section className="mt-6 rounded-lg border border-border bg-white p-4">
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-base font-semibold">系统设置</h2>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <SettingItem label="控制器地址" value={settings.data?.publicUrl || window.location.origin} />
+          <SettingItem label="监听地址" value={settings.data?.listenAddr ?? "-"} />
+          <SettingItem label="日志级别" value={settings.data?.logLevel ?? "-"} />
+          <SettingItem label="数据库" value={settings.data?.databaseBackend ?? "-"} />
+          <SettingItem label="管理后台" value={settings.data?.webConsoleEnabled ? "enabled" : "disabled"} />
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SettingItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-md border border-border p-3 text-sm">
+      <div className="text-muted-foreground">{label}</div>
+      <div className="mt-1 truncate font-medium" title={value}>
+        {value}
+      </div>
     </div>
   );
 }
