@@ -28,6 +28,14 @@ func TestHTTPRegistrationClient(t *testing.T) {
 				t.Fatalf("missing device token")
 			}
 			_ = json.NewEncoder(w).Encode(models.Device{ID: "device-id", Status: models.DeviceStatusOnline})
+		case "/api/v1/devices/device-id/network-config":
+			if r.Header.Get("X-Linkbit-Device-Token") != "device-token" {
+				t.Fatalf("missing device token")
+			}
+			_ = json.NewEncoder(w).Encode(models.NetworkConfig{
+				Device: models.Device{ID: "device-id"},
+				Peers:  []models.NetworkPeer{{ID: "peer-1", VirtualIP: "100.96.1.3"}},
+			})
 		default:
 			t.Fatalf("path = %s", r.URL.Path)
 		}
@@ -48,5 +56,12 @@ func TestHTTPRegistrationClient(t *testing.T) {
 	}
 	if health.Status != models.DeviceStatusOnline {
 		t.Fatalf("health status = %s", health.Status)
+	}
+	cfg, err := client.GetNetworkConfig(t.Context())
+	if err != nil {
+		t.Fatalf("GetNetworkConfig() error = %v", err)
+	}
+	if len(cfg.Peers) != 1 {
+		t.Fatalf("peers = %d, want 1", len(cfg.Peers))
 	}
 }

@@ -45,6 +45,20 @@ type DeviceHealthReport struct {
 	PeersTotal     int          `json:"peersTotal"`
 }
 
+type NetworkPeer struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	VirtualIP string `json:"virtualIp"`
+	PublicKey string `json:"publicKey"`
+}
+
+type NetworkConfig struct {
+	Device   Device          `json:"device"`
+	Peers    []NetworkPeer   `json:"peers"`
+	Policies []NetworkPolicy `json:"policies"`
+	Relays   []RelayNode     `json:"relays"`
+}
+
 type RelayStatus string
 
 const (

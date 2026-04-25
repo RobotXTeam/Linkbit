@@ -243,6 +243,14 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	return err
 }
 
+func (s *Store) GetDeviceByIDAndTokenHash(ctx context.Context, id string, tokenHash string) (models.Device, error) {
+	row := s.db.QueryRowContext(ctx, `
+SELECT id, user_id, group_id, name, virtual_ip, public_key, token_hash, status, last_seen_at, created_at, fingerprint
+FROM devices WHERE id = ? AND token_hash = ?
+`, id, tokenHash)
+	return scanDevice(row)
+}
+
 func (s *Store) UpdateDeviceHealth(ctx context.Context, id string, tokenHash string, report models.DeviceHealthReport) (models.Device, error) {
 	status := report.Status
 	if status == "" {

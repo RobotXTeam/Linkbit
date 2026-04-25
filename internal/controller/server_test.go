@@ -129,6 +129,14 @@ func TestInvitationRegistersDeviceOnce(t *testing.T) {
 		t.Fatalf("health status = %d, want %d; body=%s", healthRec.Code, http.StatusOK, healthRec.Body.String())
 	}
 
+	configReq := httptest.NewRequest(http.MethodGet, "/api/v1/devices/"+registration.Device.ID+"/network-config", nil)
+	configReq.Header.Set(linkbitapi.HeaderDeviceToken, registration.Device.DeviceToken)
+	configRec := httptest.NewRecorder()
+	handler.ServeHTTP(configRec, configReq)
+	if configRec.Code != http.StatusOK {
+		t.Fatalf("network config status = %d, want %d; body=%s", configRec.Code, http.StatusOK, configRec.Body.String())
+	}
+
 	registerAgainReq := httptest.NewRequest(http.MethodPost, "/api/v1/devices/register", bytes.NewBufferString(registerBody))
 	registerAgainRec := httptest.NewRecorder()
 	handler.ServeHTTP(registerAgainRec, registerAgainReq)

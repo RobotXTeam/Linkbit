@@ -58,6 +58,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/devices", s.requireAPIKey(http.HandlerFunc(s.handleDeviceList)))
 	mux.HandleFunc("POST /api/v1/devices/register", s.handleDeviceRegister)
 	mux.HandleFunc("POST /api/v1/devices/{id}/health", s.handleDeviceHealth)
+	mux.HandleFunc("GET /api/v1/devices/{id}/network-config", s.handleDeviceNetworkConfig)
 	mux.Handle("POST /api/v1/invitations", s.requireAPIKey(http.HandlerFunc(s.handleInvitationCreate)))
 	mux.Handle("POST /api/v1/policies", s.requireAPIKey(http.HandlerFunc(s.handlePolicyCreate)))
 	mux.Handle("GET /api/v1/policies", s.requireAPIKey(http.HandlerFunc(s.handlePolicyList)))
@@ -341,6 +342,62 @@ func (s *Server) handleDeviceHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, device)
 }
 
+func (s *Server) handleDeviceNetworkConfig(w http.ResponseWriter, r *http.Request) {
+	device, ok := s.authenticateDevice(w, r)
+	if !ok {
+		return
+	}
+	devices, err := s.store.ListDevices(r.Context())
+	if err != nil {
+		s.logger.Error("list devices for network config failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "network config failed")
+		return
+	}
+	policies, err := s.store.ListPolicies(r.Context())
+	if err != nil {
+		s.logger.Error("list policies for network config failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "network config failed")
+		return
+	}
+	relays, err := s.store.ListRelays(r.Context())
+	if err != nil {
+		s.logger.Error("list relays for network config failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "network config failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, models.NetworkConfig{
+		Device:   device,
+		Peers:    allowedPeers(device, devices, policies),
+		Policies: policies,
+		Relays:   relays,
+	})
+}
+
+func (s *Server) authenticateDevice(w http.ResponseWriter, r *http.Request) (models.Device, bool) {
+	deviceID := r.PathValue("id")
+	deviceToken := r.Header.Get(linkbitapi.HeaderDeviceToken)
+	if deviceID == "" || deviceToken == "" {
+		writeError(w, http.StatusUnauthorized, "device id and token are required")
+		return models.Device{}, false
+	}
+	tokenHash, err := auth.HashAPIKey(deviceToken, s.cfg.APIKeyPepper)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "invalid device token")
+		return models.Device{}, false
+	}
+	device, err := s.store.GetDeviceByIDAndTokenHash(r.Context(), deviceID, tokenHash)
+	if store.IsNotFound(err) {
+		writeError(w, http.StatusUnauthorized, "invalid device token")
+		return models.Device{}, false
+	}
+	if err != nil {
+		s.logger.Error("device authentication failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "device authentication failed")
+		return models.Device{}, false
+	}
+	return device, true
+}
+
 func (s *Server) handleInvitationCreate(w http.ResponseWriter, r *http.Request) {
 	var req models.InvitationCreateRequest
 	if err := decodeJSON(w, r, &req); err != nil {
@@ -493,6 +550,38 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 
 func writeError(w http.ResponseWriter, status int, message string) {
 	writeJSON(w, status, map[string]string{"error": message})
+}
+
+func allowedPeers(device models.Device, devices []models.Device, policies []models.NetworkPolicy) []models.NetworkPeer {
+	allowed := make(map[string]bool)
+	for _, policy := range policies {
+		if !policy.Enabled {
+			continue
+		}
+		if policyAllows(policy.SourceID, device) {
+			allowed[policy.TargetID] = true
+		}
+	}
+
+	peers := make([]models.NetworkPeer, 0)
+	for _, candidate := range devices {
+		if candidate.ID == device.ID {
+			continue
+		}
+		if allowed[candidate.ID] || allowed[candidate.GroupID] || allowed["*"] {
+			peers = append(peers, models.NetworkPeer{
+				ID:        candidate.ID,
+				Name:      candidate.Name,
+				VirtualIP: candidate.VirtualIP,
+				PublicKey: candidate.PublicKey,
+			})
+		}
+	}
+	return peers
+}
+
+func policyAllows(selector string, device models.Device) bool {
+	return selector == "*" || selector == device.ID || selector == device.GroupID
 }
 
 func virtualIPFromUUID(id uuid.UUID) string {

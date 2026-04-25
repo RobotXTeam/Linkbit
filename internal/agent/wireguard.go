@@ -36,9 +36,9 @@ func NewWireGuardManager(cfg config.AgentConfig, runner CommandRunner) *WireGuar
 	return &WireGuardManager{cfg: cfg, runner: runner}
 }
 
-func (m *WireGuardManager) Apply(ctx context.Context, registration models.DeviceRegistrationResponse) error {
+func (m *WireGuardManager) Apply(ctx context.Context, network models.NetworkConfig) error {
 	if m.cfg.WireGuardDryRun {
-		return m.applyCommands(ctx, registration, "")
+		return m.applyCommands(ctx, network, "")
 	}
 	if runtime.GOOS != "linux" {
 		return errors.New("wireguard command manager currently supports linux only")
@@ -51,7 +51,7 @@ func (m *WireGuardManager) Apply(ctx context.Context, registration models.Device
 		return err
 	}
 	defer os.Remove(keyFile)
-	return m.applyCommands(ctx, registration, keyFile)
+	return m.applyCommands(ctx, network, keyFile)
 }
 
 func (m *WireGuardManager) Destroy(ctx context.Context) error {
@@ -64,11 +64,11 @@ func (m *WireGuardManager) Destroy(ctx context.Context) error {
 	return nil
 }
 
-func (m *WireGuardManager) applyCommands(ctx context.Context, registration models.DeviceRegistrationResponse, keyFile string) error {
+func (m *WireGuardManager) applyCommands(ctx context.Context, network models.NetworkConfig, keyFile string) error {
 	if m.cfg.WireGuardInterface == "" {
 		return errors.New("wireguard interface is required")
 	}
-	if registration.Device.VirtualIP == "" {
+	if network.Device.VirtualIP == "" {
 		return errors.New("registered device virtual IP is required")
 	}
 	_ = m.runner.Run(ctx, "ip", "link", "del", m.cfg.WireGuardInterface)
@@ -80,8 +80,16 @@ func (m *WireGuardManager) applyCommands(ctx context.Context, registration model
 			return err
 		}
 	}
-	if err := m.runner.Run(ctx, "ip", "address", "add", registration.Device.VirtualIP+"/32", "dev", m.cfg.WireGuardInterface); err != nil {
+	if err := m.runner.Run(ctx, "ip", "address", "add", network.Device.VirtualIP+"/32", "dev", m.cfg.WireGuardInterface); err != nil {
 		return err
+	}
+	for _, peer := range network.Peers {
+		if peer.PublicKey == "" || peer.VirtualIP == "" {
+			continue
+		}
+		if err := m.runner.Run(ctx, "wg", "set", m.cfg.WireGuardInterface, "peer", peer.PublicKey, "allowed-ips", peer.VirtualIP+"/32"); err != nil {
+			return err
+		}
 	}
 	if err := m.runner.Run(ctx, "ip", "link", "set", "dev", m.cfg.WireGuardInterface, "mtu", "1280"); err != nil {
 		return err

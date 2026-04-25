@@ -14,8 +14,12 @@ type RegistrationClient interface {
 	Register(ctx context.Context, enrollmentKey string, deviceName string) (models.DeviceRegistrationResponse, error)
 }
 
+type NetworkConfigClient interface {
+	GetNetworkConfig(ctx context.Context) (models.NetworkConfig, error)
+}
+
 type TunnelManager interface {
-	Apply(ctx context.Context, registration models.DeviceRegistrationResponse) error
+	Apply(ctx context.Context, network models.NetworkConfig) error
 	Destroy(ctx context.Context) error
 }
 
@@ -58,7 +62,18 @@ func (s *Service) Run(ctx context.Context) error {
 		s.logger.Info("device registered", "device_id", registration.Device.ID, "virtual_ip", registration.Device.VirtualIP)
 	}
 	if s.tunnel != nil {
-		if err := s.tunnel.Apply(ctx, s.device); err != nil {
+		network := models.NetworkConfig{
+			Device: s.device.Device,
+			Relays: s.device.Relays,
+		}
+		if client, ok := s.registration.(NetworkConfigClient); ok {
+			latest, err := client.GetNetworkConfig(ctx)
+			if err != nil {
+				return err
+			}
+			network = latest
+		}
+		if err := s.tunnel.Apply(ctx, network); err != nil {
 			return err
 		}
 		defer func() {

@@ -60,6 +60,31 @@ func (c *HTTPRegistrationClient) ReportHealth(ctx context.Context, report models
 	return out, nil
 }
 
+func (c *HTTPRegistrationClient) GetNetworkConfig(ctx context.Context) (models.NetworkConfig, error) {
+	var out models.NetworkConfig
+	if c.controllerURL == "" || c.deviceID == "" || c.deviceToken == "" {
+		return out, errors.New("controller url, device id, and device token are required")
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.controllerURL+"/api/v1/devices/"+c.deviceID+"/network-config", nil)
+	if err != nil {
+		return out, err
+	}
+	req.Header.Set("X-Linkbit-Device-Token", c.deviceToken)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return out, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return out, errors.New(resp.Status)
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
 func (c *HTTPRegistrationClient) Register(ctx context.Context, enrollmentKey string, deviceName string) (models.DeviceRegistrationResponse, error) {
 	var out models.DeviceRegistrationResponse
 	if c.controllerURL == "" {

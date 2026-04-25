@@ -20,6 +20,14 @@ Required JSON fields:
 
 Returns the assigned device, virtual IP, and known relay nodes.
 
+`GET /api/v1/devices/{id}/network-config`
+
+Device-token authenticated endpoint that returns the device, allowed peers, policies, and relays needed by the agent to configure WireGuard.
+
+Required header:
+
+- `X-Linkbit-Device-Token`
+
 ## Overview
 
 `GET /api/v1/overview`
