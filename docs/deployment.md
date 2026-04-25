@@ -74,6 +74,25 @@ make recovery-smoke
 
 Prometheus-compatible metrics are exposed at `/metrics` and require `X-Linkbit-API-Key`.
 
+## Remote Install Helper
+
+Generate environment files locally without committing secrets:
+
+```bash
+LINKBIT_CONTROLLER_URL=https://controller.example.com \
+LINKBIT_RELAY_PUBLIC_URL=https://relay.example.com \
+LINKBIT_API_KEY_PEPPER=replace-me \
+LINKBIT_BOOTSTRAP_API_KEY=replace-me \
+LINKBIT_API_KEY=replace-me \
+./scripts/render-deploy-env.sh
+```
+
+Upload binaries and install scripts:
+
+```bash
+LINKBIT_REMOTE_HOST=root@example.com ./scripts/remote-install.sh
+```
+
 ## Agent
 
 Required environment:
