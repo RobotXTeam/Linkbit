@@ -18,6 +18,9 @@ This repository currently contains the first-step project skeleton, dependency a
 - React management console wired to controller overview, devices, relays, policies, and invitation creation.
 - CI workflow for Go tests and web checks.
 - goreleaser skeleton for controller, relay, and agent binaries.
+- Controller can serve the built web console directly.
+- Docker/Compose and Caddy templates are included.
+- Linux agent has a WireGuard command manager; tray and RustDesk boundaries are in place.
 
 ## Repository Layout
 
