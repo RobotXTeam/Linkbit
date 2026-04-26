@@ -99,6 +99,30 @@ func TestServicePersistsAndReusesDeviceState(t *testing.T) {
 	}
 }
 
+func TestServiceRunOnceReportsAndExits(t *testing.T) {
+	statePath := t.TempDir() + "/agent-state.json"
+	client := &serviceClient{}
+	tunnel := &serviceTunnel{}
+	service, err := NewService(config.AgentConfig{
+		ControllerURL:      "https://controller.example.com",
+		EnrollmentKey:      "invite",
+		DeviceName:         "device-1",
+		HealthEvery:        time.Hour,
+		WireGuardInterface: "linkbit0",
+		StatePath:          statePath,
+		RunOnce:            true,
+	}, client, tunnel, NewControllerHealthReporter(client), slog.Default())
+	if err != nil {
+		t.Fatalf("NewService() error = %v", err)
+	}
+	if err := service.Run(t.Context()); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if client.registerCalls != 1 || tunnel.applyCalls != 1 {
+		t.Fatalf("register/apply calls = %d/%d, want 1/1", client.registerCalls, tunnel.applyCalls)
+	}
+}
+
 func runBriefly(t *testing.T, service *Service) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Millisecond)

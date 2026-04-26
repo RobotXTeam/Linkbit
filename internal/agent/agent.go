@@ -111,6 +111,14 @@ func (s *Service) Run(ctx context.Context) error {
 			}
 		}()
 	}
+	if s.cfg.RunOnce {
+		if s.health != nil {
+			if err := s.health.CheckAndReport(ctx, s.device); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 
 	ticker := time.NewTicker(s.cfg.HealthEvery)
 	defer ticker.Stop()

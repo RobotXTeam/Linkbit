@@ -9,7 +9,7 @@ fi
 install_dir="${LINKBIT_INSTALL_DIR:-/opt/linkbit}"
 config_dir="${LINKBIT_CONFIG_DIR:-/etc/linkbit}"
 
-mkdir -p "$install_dir" "$config_dir"
+mkdir -p "$install_dir" "$config_dir" /var/lib/linkbit
 install -m 0755 ./bin/linkbit-agent "$install_dir/linkbit-agent"
 
 cat > /etc/systemd/system/linkbit-agent.service <<'SERVICE'
@@ -30,7 +30,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/run /tmp
+ReadWritePaths=/run /tmp /var/lib/linkbit
 
 [Install]
 WantedBy=multi-user.target

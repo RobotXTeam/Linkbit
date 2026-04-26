@@ -40,6 +40,8 @@ type AgentConfig struct {
 	WireGuardPublicKey  string
 	WireGuardDryRun     bool
 	StatePath           string
+	DeviceFingerprint   string
+	RunOnce             bool
 }
 
 func LoadController() (ControllerConfig, error) {
@@ -81,6 +83,8 @@ func LoadAgent() AgentConfig {
 		WireGuardPublicKey:  os.Getenv("LINKBIT_WG_PUBLIC_KEY"),
 		WireGuardDryRun:     getenvBool("LINKBIT_WG_DRY_RUN", false),
 		StatePath:           getenv("LINKBIT_STATE_PATH", defaultAgentStatePath()),
+		DeviceFingerprint:   os.Getenv("LINKBIT_DEVICE_FINGERPRINT"),
+		RunOnce:             getenvBool("LINKBIT_RUN_ONCE", false),
 	}
 }
 

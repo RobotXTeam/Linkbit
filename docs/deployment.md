@@ -127,14 +127,24 @@ The remote installer uploads the built console from `web/dist` and the controlle
 Required environment:
 
 - `LINKBIT_CONTROLLER_URL`
-- `LINKBIT_ENROLLMENT_KEY`
-- `LINKBIT_WG_PUBLIC_KEY`
-- `LINKBIT_WG_PRIVATE_KEY`
+- `LINKBIT_ENROLLMENT_KEY` only for first enrollment
 
 The Linux agent performs controller registration, creates a WireGuard interface through `ip` and `wg`, and reports health back to the controller with a device-scoped token.
 Use `deploy/agent.env.example` as the non-secret template.
 The agent generates a WireGuard keypair when none is supplied, then stores the keypair and device token in `LINKBIT_STATE_PATH`.
 After first enrollment, later restarts no longer need the one-time enrollment key.
+
+One-shot enrollment check without changing network interfaces:
+
+```bash
+./linkbit-agent --controller http://203.0.113.10 --enrollment-key <token> --dry-run --once
+```
+
+Long-running agent with real WireGuard changes:
+
+```bash
+sudo ./linkbit-agent --controller http://203.0.113.10 --enrollment-key <token>
+```
 
 Install:
 

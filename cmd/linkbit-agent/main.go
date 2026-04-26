@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"log/slog"
 	"os"
@@ -16,7 +17,16 @@ import (
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	cfg := config.LoadAgent()
-	identity, err := agent.EnsureIdentity(cfg.StatePath, cfg.WireGuardPrivateKey, cfg.WireGuardPublicKey, os.Getenv("LINKBIT_DEVICE_FINGERPRINT"))
+	flag.StringVar(&cfg.ControllerURL, "controller", cfg.ControllerURL, "Linkbit controller URL")
+	flag.StringVar(&cfg.EnrollmentKey, "enrollment-key", cfg.EnrollmentKey, "one-time enrollment key for first registration")
+	flag.StringVar(&cfg.DeviceName, "name", cfg.DeviceName, "device name")
+	flag.StringVar(&cfg.StatePath, "state", cfg.StatePath, "agent state file path")
+	flag.StringVar(&cfg.WireGuardInterface, "interface", cfg.WireGuardInterface, "WireGuard interface name")
+	flag.BoolVar(&cfg.WireGuardDryRun, "dry-run", cfg.WireGuardDryRun, "validate controller flow without changing WireGuard interfaces")
+	flag.BoolVar(&cfg.RunOnce, "once", cfg.RunOnce, "register, apply config, report once, then exit")
+	flag.Parse()
+
+	identity, err := agent.EnsureIdentity(cfg.StatePath, cfg.WireGuardPrivateKey, cfg.WireGuardPublicKey, cfg.DeviceFingerprint)
 	if err != nil {
 		log.Fatalf("load agent identity: %v", err)
 	}

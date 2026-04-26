@@ -166,7 +166,7 @@ export function DashboardPage() {
   };
   const controllerURL = settings.data?.publicUrl || window.location.origin;
   const enrollmentCommand = lastToken
-    ? `LINKBIT_CONTROLLER_URL=${controllerURL} LINKBIT_ENROLLMENT_KEY=${lastToken} ./linkbit-agent`
+    ? `./linkbit-agent --controller ${controllerURL} --enrollment-key ${lastToken}`
     : "";
 
   return (
