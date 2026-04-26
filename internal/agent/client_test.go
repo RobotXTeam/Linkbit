@@ -24,7 +24,7 @@ func TestHTTPRegistrationClient(t *testing.T) {
 				t.Fatalf("endpoint = %q, want %q", req.Endpoint, "198.51.100.10:41641")
 			}
 			_ = json.NewEncoder(w).Encode(models.DeviceRegistrationResponse{
-				Device: models.Device{ID: "device-id", VirtualIP: "100.96.1.2", DeviceToken: "device-token"},
+				Device: models.Device{ID: "device-id", VirtualIP: "10.88.1.2", DeviceToken: "device-token"},
 			})
 		case "/api/v1/devices/device-id/health":
 			if r.Header.Get("X-Linkbit-Device-Token") != "device-token" {
@@ -37,7 +37,7 @@ func TestHTTPRegistrationClient(t *testing.T) {
 			}
 			_ = json.NewEncoder(w).Encode(models.NetworkConfig{
 				Device: models.Device{ID: "device-id"},
-				Peers:  []models.NetworkPeer{{ID: "peer-1", VirtualIP: "100.96.1.3"}},
+				Peers:  []models.NetworkPeer{{ID: "peer-1", VirtualIP: "10.88.1.3"}},
 			})
 		default:
 			t.Fatalf("path = %s", r.URL.Path)

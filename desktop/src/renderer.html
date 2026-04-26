@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Linkbit</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, "Segoe UI", system-ui, sans-serif;
+        background: #f5f7f8;
+        color: #172026;
+      }
+      body {
+        margin: 0;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid #d8dee3;
+        background: #ffffff;
+        padding: 18px 24px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 22px;
+      }
+      main {
+        display: grid;
+        grid-template-columns: 360px 1fr;
+        gap: 18px;
+        padding: 20px;
+      }
+      section {
+        border: 1px solid #d8dee3;
+        border-radius: 8px;
+        background: #ffffff;
+        padding: 18px;
+      }
+      label {
+        display: grid;
+        gap: 7px;
+        margin-bottom: 12px;
+        font-size: 13px;
+        color: #52606b;
+      }
+      input {
+        height: 36px;
+        border: 1px solid #c5cdd3;
+        border-radius: 6px;
+        padding: 0 10px;
+        font-size: 14px;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      button {
+        height: 36px;
+        border: 0;
+        border-radius: 6px;
+        background: #1c6b5a;
+        color: #ffffff;
+        padding: 0 14px;
+        font-weight: 600;
+      }
+      button.secondary {
+        background: #e8edef;
+        color: #172026;
+      }
+      pre {
+        height: 470px;
+        overflow: auto;
+        margin: 0;
+        border-radius: 6px;
+        background: #101820;
+        color: #d5f5e8;
+        padding: 14px;
+        font-size: 12px;
+        line-height: 1.45;
+        white-space: pre-wrap;
+      }
+      .status {
+        color: #52606b;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Linkbit 客户端</h1>
+        <div class="status" id="status">未连接</div>
+      </div>
+      <button class="secondary" id="openConsole">打开管理后台</button>
+    </header>
+    <main>
+      <section>
+        <label>控制器地址<input id="controller" placeholder="http://120.79.155.227" /></label>
+        <label>邀请码<input id="enrollmentKey" placeholder="首次加入时填写" /></label>
+        <label>设备名称<input id="deviceName" /></label>
+        <label>WireGuard 接口<input id="interfaceName" /></label>
+        <label>状态文件<input id="statePath" /></label>
+        <label class="row"><input id="dryRun" type="checkbox" style="height:16px;width:16px" /> dry-run 测试模式</label>
+        <div class="row">
+          <button id="start">启动连接</button>
+          <button class="secondary" id="stop">停止</button>
+        </div>
+      </section>
+      <section>
+        <pre id="log"></pre>
+      </section>
+    </main>
+    <script>
+      const fields = ["controller", "enrollmentKey", "deviceName", "interfaceName", "statePath"];
+      const log = document.querySelector("#log");
+      function value(id) {
+        const el = document.querySelector(`#${id}`);
+        return el.type === "checkbox" ? el.checked : el.value;
+      }
+      function append(line) {
+        log.textContent += line;
+        log.scrollTop = log.scrollHeight;
+      }
+      window.linkbit.loadSettings().then((settings) => {
+        for (const field of fields) document.querySelector(`#${field}`).value = settings[field] || "";
+        document.querySelector("#dryRun").checked = Boolean(settings.dryRun);
+      });
+      document.querySelector("#start").addEventListener("click", async () => {
+        const input = Object.fromEntries(fields.map((field) => [field, value(field)]));
+        input.dryRun = value("dryRun");
+        const result = await window.linkbit.startAgent(input);
+        document.querySelector("#status").textContent = result.message;
+        append(`> ${result.message}\n`);
+      });
+      document.querySelector("#stop").addEventListener("click", async () => {
+        const result = await window.linkbit.stopAgent();
+        document.querySelector("#status").textContent = result.message;
+        append(`> ${result.message}\n`);
+      });
+      document.querySelector("#openConsole").addEventListener("click", () => {
+        window.linkbit.openConsole(value("controller"));
+      });
+      window.linkbit.onLog(append);
+      window.linkbit.onStatus((status) => {
+        document.querySelector("#status").textContent = status.running ? "运行中" : `已停止 ${status.code ?? ""}`;
+      });
+    </script>
+  </body>
+</html>

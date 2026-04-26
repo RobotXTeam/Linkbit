@@ -41,6 +41,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("create controller: %v", err)
 	}
+	server.SyncHub(context.Background())
 
 	logger.Info("starting linkbit-controller", "addr", cfg.ListenAddr, "version", version.Version, "web_dir", cfg.WebDir)
 	if err := http.ListenAndServe(cfg.ListenAddr, server.WithStatic(server.Handler())); err != nil {

@@ -67,7 +67,12 @@ build_platform darwin amd64
 build_platform darwin arm64
 build_platform windows amd64
 
-(cd "$out_dir" && sha256sum linkbit_"$version"_* > checksums.txt)
+if [ "${LINKBIT_BUILD_DESKTOP:-1}" = "1" ] && [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && [ -d desktop ]; then
+  (cd desktop && npm ci && npm run dist -- --linux AppImage)
+  cp desktop/dist/*.AppImage "$out_dir/linkbit-desktop_${version}_linux_amd64.AppImage"
+fi
+
+(cd "$out_dir" && sha256sum linkbit_"$version"_* linkbit-desktop_"$version"_* 2>/dev/null > checksums.txt)
 
 echo "release artifacts:"
 find "$out_dir" -maxdepth 1 -type f -print | sort

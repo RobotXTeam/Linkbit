@@ -46,7 +46,7 @@ func TestFileStateStorePreservesIdentityWhenSavingDevice(t *testing.T) {
 	}
 	store := NewFileStateStore(statePath)
 	if err := store.Save(models.DeviceRegistrationResponse{
-		Device: models.Device{ID: "device-id", VirtualIP: "100.96.1.2", DeviceToken: "device-token", TokenHash: "must-not-persist"},
+		Device: models.Device{ID: "device-id", VirtualIP: "10.88.1.2", DeviceToken: "device-token", TokenHash: "must-not-persist"},
 	}); err != nil {
 		t.Fatalf("Save() error = %v", err)
 	}

@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,6 +26,7 @@ type Server struct {
 	logger      *slog.Logger
 	adminDigest string
 	store       store.Store
+	hub         *WireGuardHub
 }
 
 func NewServer(cfg config.ControllerConfig, logger *slog.Logger, bootstrapAPIKey string, storage store.Store) (*Server, error) {
@@ -38,12 +40,24 @@ func NewServer(cfg config.ControllerConfig, logger *slog.Logger, bootstrapAPIKey
 	if err != nil {
 		return nil, err
 	}
+	hub, err := NewWireGuardHub(cfg, logger)
+	if err != nil {
+		return nil, err
+	}
 	return &Server{
 		cfg:         cfg,
 		logger:      logger,
 		adminDigest: digest,
 		store:       storage,
+		hub:         hub,
 	}, nil
+}
+
+func (s *Server) SyncHub(ctx context.Context) {
+	if s.hub == nil {
+		return
+	}
+	s.hub.SyncFromStore(ctx, s.store.ListDevices)
 }
 
 func (s *Server) Handler() http.Handler {
@@ -378,6 +392,7 @@ func (s *Server) handleDeviceDelete(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "device deletion failed")
 		return
 	}
+	s.SyncHub(r.Context())
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -453,6 +468,7 @@ func (s *Server) handleDeviceRegister(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "device registration failed")
 		return
 	}
+	s.SyncHub(r.Context())
 	if !invitation.Reusable {
 		if err := s.store.MarkInvitationUsed(r.Context(), invitation.ID); err != nil {
 			s.logger.Error("mark invitation used failed", "err", err)
@@ -528,9 +544,13 @@ func (s *Server) handleDeviceNetworkConfig(w http.ResponseWriter, r *http.Reques
 		writeError(w, http.StatusInternalServerError, "network config failed")
 		return
 	}
+	peers := allowedPeers(device, devices, policies)
+	if s.hub != nil {
+		peers = append(peers, s.hub.NetworkPeer())
+	}
 	writeJSON(w, http.StatusOK, models.NetworkConfig{
 		Device:   device,
-		Peers:    allowedPeers(device, devices, policies),
+		Peers:    peers,
 		Policies: policies,
 		Relays:   relays,
 	})
@@ -809,5 +829,5 @@ func validWireGuardEndpoint(endpoint string) bool {
 
 func virtualIPFromUUID(id uuid.UUID) string {
 	bytes := id
-	return fmt.Sprintf("100.96.%d.%d", bytes[0], bytes[1])
+	return fmt.Sprintf("10.88.%d.%d", bytes[0], bytes[1])
 }

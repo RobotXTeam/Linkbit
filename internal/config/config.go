@@ -11,12 +11,19 @@ import (
 )
 
 type ControllerConfig struct {
-	ListenAddr   string
-	PublicURL    string
-	DatabasePath string
-	APIKeyPepper []byte
-	WebDir       string
-	LogLevel     string
+	ListenAddr           string
+	PublicURL            string
+	DatabasePath         string
+	APIKeyPepper         []byte
+	WebDir               string
+	LogLevel             string
+	HubWireGuardEnabled  bool
+	HubWireGuardIface    string
+	HubWireGuardIP       string
+	HubWireGuardNetwork  string
+	HubWireGuardPort     int
+	HubWireGuardKey      string
+	HubWireGuardEndpoint string
 }
 
 type RelayConfig struct {
@@ -47,12 +54,19 @@ type AgentConfig struct {
 
 func LoadController() (ControllerConfig, error) {
 	cfg := ControllerConfig{
-		ListenAddr:   getenv("LINKBIT_LISTEN_ADDR", linkbitapi.DefaultListenAddr),
-		PublicURL:    os.Getenv("LINKBIT_PUBLIC_URL"),
-		DatabasePath: getenv("LINKBIT_DATABASE_PATH", "linkbit.db"),
-		APIKeyPepper: []byte(os.Getenv("LINKBIT_API_KEY_PEPPER")),
-		WebDir:       os.Getenv("LINKBIT_WEB_DIR"),
-		LogLevel:     getenv("LINKBIT_LOG_LEVEL", "info"),
+		ListenAddr:           getenv("LINKBIT_LISTEN_ADDR", linkbitapi.DefaultListenAddr),
+		PublicURL:            os.Getenv("LINKBIT_PUBLIC_URL"),
+		DatabasePath:         getenv("LINKBIT_DATABASE_PATH", "linkbit.db"),
+		APIKeyPepper:         []byte(os.Getenv("LINKBIT_API_KEY_PEPPER")),
+		WebDir:               os.Getenv("LINKBIT_WEB_DIR"),
+		LogLevel:             getenv("LINKBIT_LOG_LEVEL", "info"),
+		HubWireGuardEnabled:  getenvBool("LINKBIT_HUB_WG_ENABLED", false),
+		HubWireGuardIface:    getenv("LINKBIT_HUB_WG_INTERFACE", "linkbit-hub"),
+		HubWireGuardIP:       getenv("LINKBIT_HUB_WG_IP", "10.88.0.1"),
+		HubWireGuardNetwork:  getenv("LINKBIT_HUB_WG_NETWORK", "10.88.0.0/16"),
+		HubWireGuardPort:     getenvInt("LINKBIT_HUB_WG_PORT", 41641),
+		HubWireGuardKey:      os.Getenv("LINKBIT_HUB_WG_PRIVATE_KEY"),
+		HubWireGuardEndpoint: os.Getenv("LINKBIT_HUB_WG_ENDPOINT"),
 	}
 	if len(cfg.APIKeyPepper) == 0 {
 		return cfg, errors.New("LINKBIT_API_KEY_PEPPER is required")
@@ -108,6 +122,18 @@ func getenvDuration(key string, fallback time.Duration) time.Duration {
 		return fallback
 	}
 	return time.Duration(seconds) * time.Second
+}
+
+func getenvInt(key string, fallback int) int {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return fallback
+	}
+	return parsed
 }
 
 func getenvBool(key string, fallback bool) bool {

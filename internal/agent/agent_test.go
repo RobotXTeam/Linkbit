@@ -22,7 +22,7 @@ func (c *serviceClient) Register(_ context.Context, enrollmentKey string, device
 		Device: models.Device{
 			ID:          "device-id",
 			Name:        deviceName,
-			VirtualIP:   "100.96.1.2",
+			VirtualIP:   "10.88.1.2",
 			DeviceToken: "device-token-" + enrollmentKey,
 		},
 	}, nil
@@ -34,7 +34,7 @@ func (c *serviceClient) SetDeviceCredentials(deviceID string, deviceToken string
 }
 
 func (c *serviceClient) GetNetworkConfig(_ context.Context) (models.NetworkConfig, error) {
-	return models.NetworkConfig{Device: models.Device{ID: c.deviceID, VirtualIP: "100.96.1.2"}}, nil
+	return models.NetworkConfig{Device: models.Device{ID: c.deviceID, VirtualIP: "10.88.1.2"}}, nil
 }
 
 func (c *serviceClient) ReportHealth(_ context.Context, _ models.DeviceHealthReport) (models.Device, error) {

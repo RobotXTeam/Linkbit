@@ -28,6 +28,7 @@ const deviceSchema = z.object({
   virtualIp: z.string(),
   publicKey: z.string(),
   endpoint: z.string().optional(),
+  allowedIps: z.array(z.string()).optional(),
   status: z.string(),
   lastSeenAt: z.string(),
   createdAt: z.string(),

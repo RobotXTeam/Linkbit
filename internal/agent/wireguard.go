@@ -96,11 +96,16 @@ func (m *WireGuardManager) applyCommands(ctx context.Context, network models.Net
 	if err := m.runner.Run(ctx, "ip", "address", "add", network.Device.VirtualIP+"/32", "dev", m.cfg.WireGuardInterface); err != nil {
 		return err
 	}
+	routes := make([]string, 0)
 	for _, peer := range network.Peers {
 		if peer.PublicKey == "" || peer.VirtualIP == "" {
 			continue
 		}
-		if err := m.runner.Run(ctx, "wg", "set", m.cfg.WireGuardInterface, "peer", peer.PublicKey, "allowed-ips", peer.VirtualIP+"/32"); err != nil {
+		allowedIPs := peer.AllowedIPs
+		if len(allowedIPs) == 0 {
+			allowedIPs = []string{peer.VirtualIP + "/32"}
+		}
+		if err := m.runner.Run(ctx, "wg", append([]string{"set", m.cfg.WireGuardInterface, "peer", peer.PublicKey, "allowed-ips"}, allowedIPs...)...); err != nil {
 			return err
 		}
 		if peer.Endpoint != "" {
@@ -108,11 +113,22 @@ func (m *WireGuardManager) applyCommands(ctx context.Context, network models.Net
 				return err
 			}
 		}
+		for _, allowedIP := range allowedIPs {
+			routes = append(routes, allowedIP)
+		}
 	}
 	if err := m.runner.Run(ctx, "ip", "link", "set", "dev", m.cfg.WireGuardInterface, "mtu", "1280"); err != nil {
 		return err
 	}
-	return m.runner.Run(ctx, "ip", "link", "set", "up", "dev", m.cfg.WireGuardInterface)
+	if err := m.runner.Run(ctx, "ip", "link", "set", "up", "dev", m.cfg.WireGuardInterface); err != nil {
+		return err
+	}
+	for _, route := range routes {
+		if err := m.runner.Run(ctx, "ip", "route", "replace", route, "dev", m.cfg.WireGuardInterface); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func writePrivateKeyFile(privateKey string) (string, error) {

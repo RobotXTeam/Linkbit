@@ -77,11 +77,12 @@ type DeviceHealthReport struct {
 }
 
 type NetworkPeer struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	VirtualIP string `json:"virtualIp"`
-	PublicKey string `json:"publicKey"`
-	Endpoint  string `json:"endpoint,omitempty"`
+	ID         string   `json:"id"`
+	Name       string   `json:"name"`
+	VirtualIP  string   `json:"virtualIp"`
+	PublicKey  string   `json:"publicKey"`
+	Endpoint   string   `json:"endpoint,omitempty"`
+	AllowedIPs []string `json:"allowedIps,omitempty"`
 }
 
 type NetworkConfig struct {
