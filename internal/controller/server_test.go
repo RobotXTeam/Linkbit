@@ -321,6 +321,56 @@ func TestDeviceDeleteRemovesDeviceAndToken(t *testing.T) {
 	}
 }
 
+func TestTCPRelaySessionRequiresDeviceAuthAndPolicy(t *testing.T) {
+	server := newTestServer(t)
+	handler := server.Handler()
+	source := registerTestDevice(t, handler, "source")
+	target := registerTestDevice(t, handler, "target")
+
+	body := `{"sourceDeviceId":"` + source.Device.ID + `","target":"` + target.Device.VirtualIP + `","targetPort":22,"protocol":"tcp"}`
+	noPolicyReq := httptest.NewRequest(http.MethodPost, "/api/v1/relay/sessions", bytes.NewBufferString(body))
+	noPolicyReq.Header.Set(linkbitapi.HeaderDeviceToken, source.Device.DeviceToken)
+	noPolicyRec := httptest.NewRecorder()
+	handler.ServeHTTP(noPolicyRec, noPolicyReq)
+	if noPolicyRec.Code != http.StatusForbidden {
+		t.Fatalf("no-policy relay status = %d, want %d; body=%s", noPolicyRec.Code, http.StatusForbidden, noPolicyRec.Body.String())
+	}
+
+	createPolicyReq := httptest.NewRequest(http.MethodPost, "/api/v1/policies", bytes.NewBufferString(`{"id":"relay-policy","sourceId":"`+source.Device.ID+`","targetId":"`+target.Device.ID+`","ports":["22"],"protocol":"tcp","enabled":true}`))
+	createPolicyReq.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
+	createPolicyRec := httptest.NewRecorder()
+	handler.ServeHTTP(createPolicyRec, createPolicyReq)
+	if createPolicyRec.Code != http.StatusCreated {
+		t.Fatalf("create relay policy status = %d, want %d; body=%s", createPolicyRec.Code, http.StatusCreated, createPolicyRec.Body.String())
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/relay/sessions", bytes.NewBufferString(body))
+	req.Header.Set(linkbitapi.HeaderDeviceToken, source.Device.DeviceToken)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("relay session status = %d, want %d; body=%s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+	var session models.TCPRelaySession
+	if err := json.NewDecoder(rec.Body).Decode(&session); err != nil {
+		t.Fatalf("decode relay session: %v", err)
+	}
+	if session.TargetDeviceID != target.Device.ID || session.TargetPort != 22 {
+		t.Fatalf("unexpected relay session: %+v", session)
+	}
+
+	pendingReq := httptest.NewRequest(http.MethodGet, "/api/v1/relay/sessions/pending?deviceId="+target.Device.ID, nil)
+	pendingReq.Header.Set(linkbitapi.HeaderDeviceToken, target.Device.DeviceToken)
+	pendingRec := httptest.NewRecorder()
+	handler.ServeHTTP(pendingRec, pendingReq)
+	if pendingRec.Code != http.StatusOK {
+		t.Fatalf("pending status = %d, want %d; body=%s", pendingRec.Code, http.StatusOK, pendingRec.Body.String())
+	}
+	if !strings.Contains(pendingRec.Body.String(), session.ID) {
+		t.Fatalf("pending relay session missing: %s", pendingRec.Body.String())
+	}
+}
+
 func TestWireGuardEndpointValidation(t *testing.T) {
 	tests := []struct {
 		endpoint string
@@ -405,6 +455,33 @@ func createGroup(t *testing.T, handler http.Handler, id string) {
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create group status = %d, want %d; body=%s", rec.Code, http.StatusCreated, rec.Body.String())
 	}
+}
+
+func registerTestDevice(t *testing.T, handler http.Handler, name string) models.DeviceRegistrationResponse {
+	t.Helper()
+	inviteReq := httptest.NewRequest(http.MethodPost, "/api/v1/invitations", bytes.NewBufferString(`{"userId":"default-user","groupId":"default","reusable":true,"expiresInSeconds":3600}`))
+	inviteReq.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
+	inviteRec := httptest.NewRecorder()
+	handler.ServeHTTP(inviteRec, inviteReq)
+	if inviteRec.Code != http.StatusCreated {
+		t.Fatalf("invite status = %d, want %d; body=%s", inviteRec.Code, http.StatusCreated, inviteRec.Body.String())
+	}
+	var invitation models.Invitation
+	if err := json.NewDecoder(inviteRec.Body).Decode(&invitation); err != nil {
+		t.Fatalf("decode invitation: %v", err)
+	}
+	registerBody := `{"enrollmentKey":"` + invitation.PlaintextToken + `","name":"` + name + `","publicKey":"wg-public-key-` + name + `","fingerprint":"fp-` + name + `"}`
+	registerReq := httptest.NewRequest(http.MethodPost, "/api/v1/devices/register", bytes.NewBufferString(registerBody))
+	registerRec := httptest.NewRecorder()
+	handler.ServeHTTP(registerRec, registerReq)
+	if registerRec.Code != http.StatusCreated {
+		t.Fatalf("register status = %d, want %d; body=%s", registerRec.Code, http.StatusCreated, registerRec.Body.String())
+	}
+	var registration models.DeviceRegistrationResponse
+	if err := json.NewDecoder(registerRec.Body).Decode(&registration); err != nil {
+		t.Fatalf("decode registration: %v", err)
+	}
+	return registration
 }
 
 func newTestServer(t *testing.T) *Server {

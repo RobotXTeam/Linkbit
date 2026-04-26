@@ -178,3 +178,21 @@ type ControllerSettings struct {
 	WebConsoleEnabled bool   `json:"webConsoleEnabled"`
 	DatabaseBackend   string `json:"databaseBackend"`
 }
+
+type TCPRelaySessionRequest struct {
+	SourceDeviceID string `json:"sourceDeviceId"`
+	Target         string `json:"target"`
+	TargetPort     int    `json:"targetPort"`
+	Protocol       string `json:"protocol"`
+}
+
+type TCPRelaySession struct {
+	ID              string    `json:"id"`
+	SourceDeviceID  string    `json:"sourceDeviceId"`
+	TargetDeviceID  string    `json:"targetDeviceId"`
+	TargetName      string    `json:"targetName"`
+	TargetVirtualIP string    `json:"targetVirtualIp"`
+	TargetPort      int       `json:"targetPort"`
+	Protocol        string    `json:"protocol"`
+	ExpiresAt       time.Time `json:"expiresAt"`
+}

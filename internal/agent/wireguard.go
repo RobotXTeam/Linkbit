@@ -96,8 +96,12 @@ func (m *WireGuardManager) applyCommands(ctx context.Context, network models.Net
 	if err := m.runner.Run(ctx, "ip", "address", "add", network.Device.VirtualIP+"/32", "dev", m.cfg.WireGuardInterface); err != nil {
 		return err
 	}
+	peers := network.Peers
+	if hasHubPeer(peers) {
+		peers = hubOnlyPeers(peers)
+	}
 	routes := make([]string, 0)
-	for _, peer := range network.Peers {
+	for _, peer := range peers {
 		if peer.PublicKey == "" || peer.VirtualIP == "" {
 			continue
 		}
@@ -112,12 +116,15 @@ func (m *WireGuardManager) applyCommands(ctx context.Context, network models.Net
 			if err := m.runner.Run(ctx, "wg", "set", m.cfg.WireGuardInterface, "peer", peer.PublicKey, "endpoint", peer.Endpoint); err != nil {
 				return err
 			}
+			if err := m.runner.Run(ctx, "wg", "set", m.cfg.WireGuardInterface, "peer", peer.PublicKey, "persistent-keepalive", "10"); err != nil {
+				return err
+			}
 		}
 		for _, allowedIP := range allowedIPs {
 			routes = append(routes, allowedIP)
 		}
 	}
-	if err := m.runner.Run(ctx, "ip", "link", "set", "dev", m.cfg.WireGuardInterface, "mtu", "1280"); err != nil {
+	if err := m.runner.Run(ctx, "ip", "link", "set", "dev", m.cfg.WireGuardInterface, "mtu", "1180"); err != nil {
 		return err
 	}
 	if err := m.runner.Run(ctx, "ip", "link", "set", "up", "dev", m.cfg.WireGuardInterface); err != nil {
@@ -128,7 +135,40 @@ func (m *WireGuardManager) applyCommands(ctx context.Context, network models.Net
 			return err
 		}
 	}
+	warmWireGuardHub(ctx, m.runner, peers)
 	return nil
+}
+
+func hasHubPeer(peers []models.NetworkPeer) bool {
+	return len(hubOnlyPeers(peers)) > 0
+}
+
+func hubOnlyPeers(peers []models.NetworkPeer) []models.NetworkPeer {
+	hubs := make([]models.NetworkPeer, 0)
+	for _, peer := range peers {
+		if peer.ID == "linkbit-hub" {
+			hubs = append(hubs, peer)
+			continue
+		}
+		for _, allowedIP := range peer.AllowedIPs {
+			if allowedIP != "" && allowedIP != peer.VirtualIP+"/32" {
+				hubs = append(hubs, peer)
+				break
+			}
+		}
+	}
+	return hubs
+}
+
+func warmWireGuardHub(ctx context.Context, runner CommandRunner, peers []models.NetworkPeer) {
+	for _, peer := range peers {
+		if peer.ID == "linkbit-hub" && peer.VirtualIP != "" {
+			// Trigger the first WireGuard handshake immediately after route
+			// installation so user traffic does not pay the cold-start penalty.
+			_ = runner.Run(ctx, "ping", "-c", "3", "-W", "1", peer.VirtualIP)
+			return
+		}
+	}
 }
 
 func writePrivateKeyFile(privateKey string) (string, error) {

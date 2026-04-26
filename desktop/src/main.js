@@ -7,6 +7,7 @@ const path = require("node:path");
 
 const store = new Store({ name: "linkbit-client" });
 let agentProcess = null;
+const forwardProcesses = new Map();
 
 function agentBinary() {
   const ext = process.platform === "win32" ? ".exe" : "";
@@ -39,7 +40,9 @@ ipcMain.handle("settings:load", () => ({
   deviceName: store.get("deviceName", os.hostname()),
   interfaceName: store.get("interfaceName", "linkbit0"),
   statePath: store.get("statePath", path.join(app.getPath("userData"), "agent-state.json")),
-  dryRun: store.get("dryRun", false)
+  dryRun: store.get("dryRun", false),
+  forwardListen: store.get("forwardListen", "127.0.0.1:10022"),
+  forwardTarget: store.get("forwardTarget", "")
 }));
 
 ipcMain.handle("agent:start", (_event, input) => {
@@ -99,6 +102,53 @@ ipcMain.handle("agent:stop", () => {
   return { ok: true, message: "Agent stopped" };
 });
 
+ipcMain.handle("forward:start", (_event, input) => {
+  const controller = String(input.controller || "").trim();
+  const statePath = String(input.statePath || path.join(app.getPath("userData"), "agent-state.json")).trim();
+  const listen = String(input.listen || "127.0.0.1:10022").trim();
+  const target = String(input.target || "").trim();
+  if (!controller || !statePath || !listen || !target) {
+    return { ok: false, message: "Controller, state file, listen address, and target are required" };
+  }
+  if (forwardProcesses.has(listen)) {
+    return { ok: false, message: `Forward is already running on ${listen}` };
+  }
+  store.set({ forwardListen: listen, forwardTarget: target });
+  const child = spawn(agentBinary(), [
+    "forward",
+    "--controller", controller,
+    "--state", statePath,
+    "--listen", listen,
+    "--target", target
+  ], {
+    stdio: ["ignore", "pipe", "pipe"],
+    windowsHide: true
+  });
+  forwardProcesses.set(listen, child);
+  child.on("exit", (code) => {
+    forwardProcesses.delete(listen);
+    BrowserWindow.getAllWindows().forEach((win) => win.webContents.send("agent:status", { running: Boolean(agentProcess), code }));
+  });
+  child.stdout.on("data", (chunk) => {
+    BrowserWindow.getAllWindows().forEach((win) => win.webContents.send("agent:log", chunk.toString()));
+  });
+  child.stderr.on("data", (chunk) => {
+    BrowserWindow.getAllWindows().forEach((win) => win.webContents.send("agent:log", chunk.toString()));
+  });
+  return { ok: true, message: `Forward started on ${listen}` };
+});
+
+ipcMain.handle("forward:stop", (_event, listen) => {
+  const key = String(listen || "").trim();
+  const child = forwardProcesses.get(key);
+  if (!child) {
+    return { ok: true, message: "Forward is not running" };
+  }
+  child.kill();
+  forwardProcesses.delete(key);
+  return { ok: true, message: `Forward stopped on ${key}` };
+});
+
 ipcMain.handle("console:open", (_event, controller) => {
   if (controller) {
     shell.openExternal(controller);
@@ -114,5 +164,8 @@ app.on("window-all-closed", () => {
 app.on("before-quit", () => {
   if (agentProcess) {
     agentProcess.kill();
+  }
+  for (const child of forwardProcesses.values()) {
+    child.kill();
   }
 });

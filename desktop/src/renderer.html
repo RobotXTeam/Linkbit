@@ -38,6 +38,10 @@
         background: #ffffff;
         padding: 18px;
       }
+      .panel-stack {
+        display: grid;
+        gap: 14px;
+      }
       label {
         display: grid;
         gap: 7px;
@@ -97,6 +101,7 @@
       <button class="secondary" id="openConsole">打开管理后台</button>
     </header>
     <main>
+      <div class="panel-stack">
       <section>
         <label>控制器地址<input id="controller" placeholder="https://controller.example.com" /></label>
         <label>邀请码<input id="enrollmentKey" placeholder="首次加入时填写" /></label>
@@ -110,11 +115,21 @@
         </div>
       </section>
       <section>
+        <label>本地监听<input id="forwardListen" placeholder="127.0.0.1:10022" /></label>
+        <label>远端目标<input id="forwardTarget" placeholder="friendlywrt:22 或 10.88.x.x:3389" /></label>
+        <div class="row">
+          <button id="startForward">启动 SSH/RDP 中转</button>
+          <button class="secondary" id="stopForward">停止中转</button>
+        </div>
+      </section>
+      </div>
+      <section>
         <pre id="log"></pre>
       </section>
     </main>
     <script>
       const fields = ["controller", "enrollmentKey", "deviceName", "interfaceName", "statePath"];
+      const forwardFields = ["forwardListen", "forwardTarget"];
       const log = document.querySelector("#log");
       function value(id) {
         const el = document.querySelector(`#${id}`);
@@ -126,6 +141,7 @@
       }
       window.linkbit.loadSettings().then((settings) => {
         for (const field of fields) document.querySelector(`#${field}`).value = settings[field] || "";
+        for (const field of forwardFields) document.querySelector(`#${field}`).value = settings[field] || "";
         document.querySelector("#dryRun").checked = Boolean(settings.dryRun);
       });
       document.querySelector("#start").addEventListener("click", async () => {
@@ -133,6 +149,19 @@
         input.dryRun = value("dryRun");
         const result = await window.linkbit.startAgent(input);
         document.querySelector("#status").textContent = result.message;
+        append(`> ${result.message}\n`);
+      });
+      document.querySelector("#startForward").addEventListener("click", async () => {
+        const result = await window.linkbit.startForward({
+          controller: value("controller"),
+          statePath: value("statePath"),
+          listen: value("forwardListen"),
+          target: value("forwardTarget")
+        });
+        append(`> ${result.message}\n`);
+      });
+      document.querySelector("#stopForward").addEventListener("click", async () => {
+        const result = await window.linkbit.stopForward(value("forwardListen"));
         append(`> ${result.message}\n`);
       });
       document.querySelector("#stop").addEventListener("click", async () => {

@@ -42,6 +42,8 @@ type AgentConfig struct {
 	EnrollmentKey       string
 	DeviceName          string
 	HealthEvery         time.Duration
+	RelayEnabled        bool
+	RelayPollEvery      time.Duration
 	WireGuardInterface  string
 	WireGuardPrivateKey string
 	WireGuardPublicKey  string
@@ -93,6 +95,8 @@ func LoadAgent() AgentConfig {
 		EnrollmentKey:       os.Getenv("LINKBIT_ENROLLMENT_KEY"),
 		DeviceName:          getenv("LINKBIT_DEVICE_NAME", hostname()),
 		HealthEvery:         getenvDuration("LINKBIT_HEALTH_SECONDS", 30*time.Second),
+		RelayEnabled:        getenvBool("LINKBIT_TCP_RELAY_ENABLED", true),
+		RelayPollEvery:      getenvDuration("LINKBIT_TCP_RELAY_POLL_SECONDS", 2*time.Second),
 		WireGuardInterface:  getenv("LINKBIT_WG_INTERFACE", "linkbit0"),
 		WireGuardPrivateKey: os.Getenv("LINKBIT_WG_PRIVATE_KEY"),
 		WireGuardPublicKey:  os.Getenv("LINKBIT_WG_PUBLIC_KEY"),

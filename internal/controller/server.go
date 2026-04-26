@@ -27,6 +27,7 @@ type Server struct {
 	adminDigest string
 	store       store.Store
 	hub         *WireGuardHub
+	relayBroker *TCPRelayBroker
 }
 
 func NewServer(cfg config.ControllerConfig, logger *slog.Logger, bootstrapAPIKey string, storage store.Store) (*Server, error) {
@@ -50,6 +51,7 @@ func NewServer(cfg config.ControllerConfig, logger *slog.Logger, bootstrapAPIKey
 		adminDigest: digest,
 		store:       storage,
 		hub:         hub,
+		relayBroker: NewTCPRelayBroker(logger),
 	}, nil
 }
 
@@ -83,6 +85,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/devices/register", s.handleDeviceRegister)
 	mux.HandleFunc("POST /api/v1/devices/{id}/health", s.handleDeviceHealth)
 	mux.HandleFunc("GET /api/v1/devices/{id}/network-config", s.handleDeviceNetworkConfig)
+	mux.HandleFunc("POST /api/v1/relay/sessions", s.handleTCPRelaySessionCreate)
+	mux.HandleFunc("GET /api/v1/relay/sessions/pending", s.handleTCPRelayPending)
+	mux.HandleFunc("GET /api/v1/relay/client/{id}", s.handleTCPRelayClientStream)
+	mux.HandleFunc("GET /api/v1/relay/agent/{id}", s.handleTCPRelayAgentStream)
 	mux.Handle("POST /api/v1/invitations", s.requireAPIKey(http.HandlerFunc(s.handleInvitationCreate)))
 	mux.Handle("POST /api/v1/policies", s.requireAPIKey(http.HandlerFunc(s.handlePolicyCreate)))
 	mux.Handle("GET /api/v1/policies", s.requireAPIKey(http.HandlerFunc(s.handlePolicyList)))
@@ -558,6 +564,30 @@ func (s *Server) handleDeviceNetworkConfig(w http.ResponseWriter, r *http.Reques
 
 func (s *Server) authenticateDevice(w http.ResponseWriter, r *http.Request) (models.Device, bool) {
 	deviceID := r.PathValue("id")
+	deviceToken := r.Header.Get(linkbitapi.HeaderDeviceToken)
+	if deviceID == "" || deviceToken == "" {
+		writeError(w, http.StatusUnauthorized, "device id and token are required")
+		return models.Device{}, false
+	}
+	tokenHash, err := auth.HashAPIKey(deviceToken, s.cfg.APIKeyPepper)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "invalid device token")
+		return models.Device{}, false
+	}
+	device, err := s.store.GetDeviceByIDAndTokenHash(r.Context(), deviceID, tokenHash)
+	if store.IsNotFound(err) {
+		writeError(w, http.StatusUnauthorized, "invalid device token")
+		return models.Device{}, false
+	}
+	if err != nil {
+		s.logger.Error("device authentication failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "device authentication failed")
+		return models.Device{}, false
+	}
+	return device, true
+}
+
+func (s *Server) authenticateDeviceCredentials(w http.ResponseWriter, r *http.Request, deviceID string) (models.Device, bool) {
 	deviceToken := r.Header.Get(linkbitapi.HeaderDeviceToken)
 	if deviceID == "" || deviceToken == "" {
 		writeError(w, http.StatusUnauthorized, "device id and token are required")

@@ -32,7 +32,7 @@ func NewHTTPRegistrationClient(controllerURL string, publicKey string, fingerpri
 		publicKey:     publicKey,
 		fingerprint:   fingerprint,
 		endpoint:      endpoint,
-		client:        &http.Client{Timeout: 10 * time.Second},
+		client:        &http.Client{Timeout: 35 * time.Second},
 	}
 }
 

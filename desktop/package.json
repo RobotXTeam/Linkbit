@@ -14,8 +14,8 @@
     "electron-store": "^8.2.0"
   },
   "devDependencies": {
-    "electron": "^33.4.11",
-    "electron-builder": "^25.1.8"
+    "electron": "^41.3.0",
+    "electron-builder": "^26.8.1"
   },
   "build": {
     "appId": "com.linkbit.client",
@@ -34,13 +34,21 @@
       }
     ],
     "linux": {
-      "target": ["AppImage", "deb"]
+      "target": [
+        "AppImage",
+        "deb"
+      ]
     },
     "mac": {
-      "target": ["dmg"]
+      "target": [
+        "dmg"
+      ]
     },
     "win": {
-      "target": ["nsis", "msi"]
+      "target": [
+        "nsis",
+        "msi"
+      ]
     }
   }
 }

@@ -111,6 +111,13 @@ func (s *Service) Run(ctx context.Context) error {
 			}
 		}()
 	}
+	if s.cfg.RelayEnabled && !s.cfg.RunOnce {
+		if relayClient, ok := s.registration.(TCPRelayClient); ok {
+			relayTarget := NewTCPRelayTarget(relayClient, s.cfg.RelayPollEvery, s.logger)
+			go relayTarget.Run(ctx)
+			s.logger.Info("tcp relay target enabled", "poll_every", s.cfg.RelayPollEvery.String())
+		}
+	}
 	if s.cfg.RunOnce {
 		if s.health != nil {
 			if err := s.health.CheckAndReport(ctx, s.device); err != nil {

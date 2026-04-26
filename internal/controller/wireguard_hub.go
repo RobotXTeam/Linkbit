@@ -85,7 +85,7 @@ func (h *WireGuardHub) Sync(ctx context.Context, devices []models.Device) error 
 	if err := runCommand(ctx, "ip", "address", "replace", h.cfg.HubWireGuardIP+"/16", "dev", h.cfg.HubWireGuardIface); err != nil {
 		return err
 	}
-	if err := runCommand(ctx, "ip", "link", "set", "dev", h.cfg.HubWireGuardIface, "mtu", "1280"); err != nil {
+	if err := runCommand(ctx, "ip", "link", "set", "dev", h.cfg.HubWireGuardIface, "mtu", "1180"); err != nil {
 		return err
 	}
 	if err := runCommand(ctx, "ip", "link", "set", "up", "dev", h.cfg.HubWireGuardIface); err != nil {
