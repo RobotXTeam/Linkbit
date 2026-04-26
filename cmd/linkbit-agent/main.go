@@ -16,7 +16,13 @@ import (
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	cfg := config.LoadAgent()
-	registration := agent.NewHTTPRegistrationClient(cfg.ControllerURL, cfg.WireGuardPublicKey, os.Getenv("LINKBIT_DEVICE_FINGERPRINT"))
+	identity, err := agent.EnsureIdentity(cfg.StatePath, cfg.WireGuardPrivateKey, cfg.WireGuardPublicKey, os.Getenv("LINKBIT_DEVICE_FINGERPRINT"))
+	if err != nil {
+		log.Fatalf("load agent identity: %v", err)
+	}
+	cfg.WireGuardPrivateKey = identity.PrivateKey
+	cfg.WireGuardPublicKey = identity.PublicKey
+	registration := agent.NewHTTPRegistrationClient(cfg.ControllerURL, identity.PublicKey, identity.Fingerprint)
 	tunnel := agent.NewWireGuardManager(cfg, nil)
 	health := agent.NewControllerHealthReporter(registration)
 	service, err := agent.NewService(cfg, registration, tunnel, health, logger)

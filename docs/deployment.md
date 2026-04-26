@@ -133,7 +133,8 @@ Required environment:
 
 The Linux agent performs controller registration, creates a WireGuard interface through `ip` and `wg`, and reports health back to the controller with a device-scoped token.
 Use `deploy/agent.env.example` as the non-secret template.
-The agent stores its device token in `LINKBIT_STATE_PATH` after first enrollment, so later restarts no longer need the one-time enrollment key.
+The agent generates a WireGuard keypair when none is supplied, then stores the keypair and device token in `LINKBIT_STATE_PATH`.
+After first enrollment, later restarts no longer need the one-time enrollment key.
 
 Install:
 

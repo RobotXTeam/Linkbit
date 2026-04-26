@@ -69,7 +69,7 @@ func (s *Service) Run(ctx context.Context) error {
 					setter.SetDeviceCredentials(registration.Device.ID, registration.Device.DeviceToken)
 				}
 				s.logger.Info("loaded device state", "device_id", registration.Device.ID, "state_path", s.cfg.StatePath)
-			} else if !errors.Is(err, os.ErrNotExist) {
+			} else if !errors.Is(err, os.ErrNotExist) && !errors.Is(err, ErrNoDeviceCredentials) {
 				s.logger.Warn("failed to load agent state, registering again", "err", err, "state_path", s.cfg.StatePath)
 			}
 		}
