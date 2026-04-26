@@ -1,8 +1,13 @@
 {
-  "name": "@linkbit/desktop",
+  "name": "linkbit-desktop",
   "version": "0.1.0",
   "private": true,
   "description": "Linkbit visual desktop client",
+  "homepage": "https://github.com/RobotXTeam/Linkbit",
+  "author": {
+    "name": "RobotXTeam",
+    "email": "support@linkbit.local"
+  },
   "main": "src/main.js",
   "type": "commonjs",
   "scripts": {
@@ -20,6 +25,11 @@
   "build": {
     "appId": "com.linkbit.client",
     "productName": "Linkbit",
+    "executableName": "Linkbit",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "buildResources": "build"
+    },
     "files": [
       "src/**/*",
       "package.json"
@@ -31,9 +41,15 @@
         "filter": [
           "linkbit-agent*"
         ]
+      },
+      {
+        "from": "build/icon.png",
+        "to": "icon.png"
       }
     ],
     "linux": {
+      "category": "Network",
+      "icon": "build/icon.png",
       "target": [
         "AppImage",
         "deb"
@@ -45,6 +61,7 @@
       ]
     },
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         "nsis",
         "msi"

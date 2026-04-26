@@ -42,8 +42,19 @@ It combines a public controller, a relay-capable network hub, endpoint agents, a
 - Web console for devices, users, groups, relays, API keys, policies, and settings.
 - Linux endpoint agent with automatic WireGuard identity generation and persistent state.
 - Visual desktop client for launching the agent without CLI-only workflows.
+- TCP relay forwarding for SSH/RDP-style traffic when UDP is blocked or unstable.
 - Release packaging for Linux, macOS, Windows, plus Linux AppImage desktop packaging.
 - Real-world validation between a local workstation and an ARM64 OpenWrt/FriendlyWrt target.
+
+## Screenshots
+
+### Desktop Client
+
+![Linkbit desktop client](docs/screenshots/desktop-client.svg)
+
+### Web Console
+
+![Linkbit web console](docs/screenshots/web-console.svg)
 
 ## Architecture
 
@@ -66,7 +77,7 @@ Core components:
 
 - `linkbit-controller`: authentication, device registry, policy API, relay registry, web console, and optional WireGuard hub.
 - `linkbit-relay`: DERP-style relay service with controller registration and heartbeat.
-- `linkbit-agent`: endpoint enrollment, WireGuard interface management, health reporting, and desktop integration boundary.
+- `linkbit-agent`: endpoint enrollment, WireGuard interface management, TCP relay forwarding, health reporting, and desktop integration boundary.
 - `desktop/`: Electron visual client for non-CLI operation.
 - `web/`: React + TypeScript management console.
 
@@ -78,18 +89,19 @@ The current development deployment has been verified with:
 - Relay health checks.
 - API smoke tests, stress tests, and relay recovery tests.
 - WireGuard hub route installation.
-- Local workstation to ARM64 target communication through Linkbit virtual IPs.
-- SSH over Linkbit virtual IP.
+- Local workstation to ARM64 target communication through Linkbit TCP relay.
+- SSH over Linkbit cloud relay.
+- Opportunistic WireGuard virtual IP connectivity when the underlying UDP path is healthy.
 
-Observed Linkbit tunnel latency in the tested environment:
+Observed Linkbit relay latency in the tested environment:
 
 ```text
 local workstation -> cloud hub -> ARM64 target
-average ICMP RTT: about 30 ms
-SSH over Linkbit virtual IP: working
+SSH handshake through TCP relay: about 0.29s to 0.84s
+target -> cloud server ICMP RTT: about 7 ms
 ```
 
-Remote desktop depends on the target device running a desktop service such as RDP, VNC, NoMachine, or RustDesk. Linkbit provides the private network path; the desktop protocol service must still be installed on the target OS.
+Remote desktop depends on the target device running a desktop service such as RDP, VNC, NoMachine, or RustDesk. Linkbit provides the private TCP forwarding path; the desktop protocol service must still be installed on the target OS.
 
 ## Quick Start
 
@@ -159,6 +171,71 @@ sudo ./linkbit-agent \
 
 For visual operation, use the Linkbit desktop client AppImage and enter the same controller URL and enrollment token.
 
+## How To Use The Desktop Client
+
+### Connect a device
+
+1. Open the Linkbit desktop client.
+2. Fill `Controller URL`, for example `https://controller.example.com` or `http://192.0.2.10`.
+3. Paste the enrollment token generated from the web console.
+4. Set a readable device name, for example `workstation` or `friendlywrt`.
+5. Keep the interface name as `linkbit0` unless you need a custom interface.
+6. Click `Start Agent`.
+
+When the log shows `device registered`, `loaded device state`, or `tcp relay target enabled`, the device is ready.
+
+### Open the management console
+
+Click `Open Console` in the top-right corner of the desktop client. If the controller URL has no scheme, the client automatically opens it as `http://...`.
+
+### Forward SSH through Linkbit
+
+Use the forwarding panel:
+
+```text
+Local Listen: 127.0.0.1:10022
+Remote Target: friendlywrt:22
+```
+
+Then connect from the local machine:
+
+```bash
+ssh -p 10022 root@127.0.0.1
+```
+
+You can also target a virtual IP:
+
+```text
+Remote Target: 10.88.92.200:22
+```
+
+### Forward RDP through Linkbit
+
+If the remote Windows or Linux desktop has RDP listening on `3389`, use:
+
+```text
+Local Listen: 127.0.0.1:13389
+Remote Target: desktop-device:3389
+```
+
+Then open your RDP client and connect to:
+
+```text
+127.0.0.1:13389
+```
+
+### CLI equivalent
+
+The desktop forwarding action is equivalent to:
+
+```bash
+linkbit-agent forward \
+  --controller https://controller.example.com \
+  --state ~/.config/linkbit/agent-state.json \
+  --listen 127.0.0.1:10022 \
+  --target friendlywrt:22
+```
+
 ## Repository Layout
 
 ```text
@@ -188,7 +265,7 @@ assets/                 Branding assets
 
 - Signed Windows MSI and macOS DMG desktop installers.
 - Tray status icon and native service management.
-- TCP fallback relay for environments where UDP is blocked by cloud ingress.
+- More relay observability and automatic WireGuard recovery when UDP is degraded.
 - RustDesk packaging and deep Linkbit identity integration.
 - Multi-tenant RBAC and audit logs.
 - High availability controller and external PostgreSQL backend.

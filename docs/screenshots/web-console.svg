@@ -1,0 +1,44 @@
+<svg width="1280" height="820" viewBox="0 0 1280 820" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Linkbit web console screenshot</title>
+  <desc id="desc">The Linkbit web console dashboard with device, relay, policy, and health panels.</desc>
+  <rect width="1280" height="820" fill="#F4F7F8"/>
+  <rect x="36" y="32" width="230" height="756" rx="14" fill="#10242B"/>
+  <rect x="70" y="70" width="42" height="42" rx="10" fill="#0F766E"/>
+  <path d="M81 98L91 80L99 90L110 74L101 102L93 92L81 98Z" fill="#B8FFF3"/>
+  <text x="126" y="98" font-family="Inter, Segoe UI, Arial" font-size="25" font-weight="700" fill="#FFFFFF">Linkbit</text>
+  <text x="72" y="166" font-family="Inter, Segoe UI, Arial" font-size="15" fill="#B6C9D0">Dashboard</text>
+  <text x="72" y="210" font-family="Inter, Segoe UI, Arial" font-size="15" fill="#E6F5F4">Devices</text>
+  <text x="72" y="254" font-family="Inter, Segoe UI, Arial" font-size="15" fill="#B6C9D0">Relays</text>
+  <text x="72" y="298" font-family="Inter, Segoe UI, Arial" font-size="15" fill="#B6C9D0">Policies</text>
+  <text x="72" y="342" font-family="Inter, Segoe UI, Arial" font-size="15" fill="#B6C9D0">Settings</text>
+  <text x="304" y="88" font-family="Inter, Segoe UI, Arial" font-size="32" font-weight="800" fill="#172026">Operations Dashboard</text>
+  <text x="304" y="118" font-family="Inter, Segoe UI, Arial" font-size="16" fill="#62727D">Private connectivity, relay health, and device inventory.</text>
+  <rect x="304" y="158" width="200" height="118" rx="10" fill="#FFFFFF" stroke="#D8E1E6"/>
+  <text x="328" y="196" font-family="Inter, Segoe UI, Arial" font-size="14" fill="#62727D">Online Devices</text>
+  <text x="328" y="244" font-family="Inter, Segoe UI, Arial" font-size="44" font-weight="800" fill="#0F766E">12</text>
+  <rect x="532" y="158" width="200" height="118" rx="10" fill="#FFFFFF" stroke="#D8E1E6"/>
+  <text x="556" y="196" font-family="Inter, Segoe UI, Arial" font-size="14" fill="#62727D">Healthy Relays</text>
+  <text x="556" y="244" font-family="Inter, Segoe UI, Arial" font-size="44" font-weight="800" fill="#155E75">2</text>
+  <rect x="760" y="158" width="200" height="118" rx="10" fill="#FFFFFF" stroke="#D8E1E6"/>
+  <text x="784" y="196" font-family="Inter, Segoe UI, Arial" font-size="14" fill="#62727D">Network Health</text>
+  <text x="784" y="244" font-family="Inter, Segoe UI, Arial" font-size="32" font-weight="800" fill="#0F766E">Relay OK</text>
+  <rect x="988" y="158" width="200" height="118" rx="10" fill="#FFFFFF" stroke="#D8E1E6"/>
+  <text x="1012" y="196" font-family="Inter, Segoe UI, Arial" font-size="14" fill="#62727D">Policies</text>
+  <text x="1012" y="244" font-family="Inter, Segoe UI, Arial" font-size="44" font-weight="800" fill="#1E3A5F">8</text>
+  <rect x="304" y="316" width="884" height="382" rx="10" fill="#FFFFFF" stroke="#D8E1E6"/>
+  <text x="334" y="360" font-family="Inter, Segoe UI, Arial" font-size="21" font-weight="800" fill="#172026">Devices</text>
+  <rect x="334" y="392" width="824" height="52" rx="8" fill="#F5F8FA"/>
+  <text x="358" y="425" font-family="Inter, Segoe UI, Arial" font-size="15" font-weight="700" fill="#172026">workstation</text>
+  <text x="570" y="425" font-family="Inter, Segoe UI, Arial" font-size="15" fill="#52606B">10.88.235.251</text>
+  <text x="870" y="425" font-family="Inter, Segoe UI, Arial" font-size="15" fill="#0F766E">online</text>
+  <rect x="334" y="460" width="824" height="52" rx="8" fill="#F5F8FA"/>
+  <text x="358" y="493" font-family="Inter, Segoe UI, Arial" font-size="15" font-weight="700" fill="#172026">friendlywrt</text>
+  <text x="570" y="493" font-family="Inter, Segoe UI, Arial" font-size="15" fill="#52606B">10.88.92.200</text>
+  <text x="870" y="493" font-family="Inter, Segoe UI, Arial" font-size="15" fill="#0F766E">relay-ready</text>
+  <rect x="334" y="548" width="390" height="92" rx="10" fill="#ECFDF9" stroke="#BFEFE5"/>
+  <text x="360" y="584" font-family="Inter, Segoe UI, Arial" font-size="16" font-weight="800" fill="#0F766E">SSH Forward</text>
+  <text x="360" y="614" font-family="Inter, Segoe UI, Arial" font-size="15" fill="#35515A">127.0.0.1:10022 -> friendlywrt:22</text>
+  <rect x="768" y="548" width="390" height="92" rx="10" fill="#EFF6FF" stroke="#C8DFFF"/>
+  <text x="794" y="584" font-family="Inter, Segoe UI, Arial" font-size="16" font-weight="800" fill="#155E75">RDP Forward</text>
+  <text x="794" y="614" font-family="Inter, Segoe UI, Arial" font-size="15" fill="#35515A">127.0.0.1:13389 -> desktop:3389</text>
+</svg>

@@ -74,6 +74,10 @@
         background: #e8edef;
         color: #172026;
       }
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.58;
+      }
       pre {
         height: 470px;
         overflow: auto;
@@ -169,8 +173,12 @@
         document.querySelector("#status").textContent = result.message;
         append(`> ${result.message}\n`);
       });
-      document.querySelector("#openConsole").addEventListener("click", () => {
-        window.linkbit.openConsole(value("controller"));
+      document.querySelector("#openConsole").addEventListener("click", async () => {
+        const button = document.querySelector("#openConsole");
+        button.disabled = true;
+        const result = await window.linkbit.openConsole(value("controller"));
+        append(`> ${result.message}\n`);
+        button.disabled = false;
       });
       window.linkbit.onLog(append);
       window.linkbit.onStatus((status) => {

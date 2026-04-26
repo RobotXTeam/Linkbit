@@ -9,6 +9,8 @@ const store = new Store({ name: "linkbit-client" });
 let agentProcess = null;
 const forwardProcesses = new Map();
 
+app.setName("Linkbit");
+
 function agentBinary() {
   const ext = process.platform === "win32" ? ".exe" : "";
   const candidates = [
@@ -20,6 +22,32 @@ function agentBinary() {
   return candidates.find((candidate) => candidate === `linkbit-agent${ext}` || fs.existsSync(candidate));
 }
 
+function appIcon() {
+  const candidates = [
+    path.join(__dirname, "..", "build", "icon.png"),
+    path.join(process.resourcesPath || "", "build", "icon.png"),
+    path.join(process.resourcesPath || "", "icon.png")
+  ];
+  return candidates.find((candidate) => fs.existsSync(candidate));
+}
+
+function normalizeControllerURL(input) {
+  const trimmed = String(input || "").trim();
+  if (!trimmed) {
+    return "";
+  }
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+  try {
+    const url = new URL(withScheme);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return "";
+    }
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 980,
@@ -27,6 +55,7 @@ function createWindow() {
     minWidth: 820,
     minHeight: 620,
     title: "Linkbit",
+    icon: appIcon(),
     webPreferences: {
       preload: path.join(__dirname, "preload.js")
     }
@@ -149,10 +178,17 @@ ipcMain.handle("forward:stop", (_event, listen) => {
   return { ok: true, message: `Forward stopped on ${key}` };
 });
 
-ipcMain.handle("console:open", (_event, controller) => {
-  if (controller) {
-    shell.openExternal(controller);
+ipcMain.handle("console:open", async (_event, controller) => {
+  const target = normalizeControllerURL(controller);
+  if (!target) {
+    return { ok: false, message: "Controller URL is required" };
   }
+  try {
+    await shell.openExternal(target);
+  } catch (error) {
+    return { ok: false, message: `Open console failed: ${error.message || error}` };
+  }
+  return { ok: true, message: `Opened ${target}` };
 });
 
 app.whenReady().then(createWindow);
