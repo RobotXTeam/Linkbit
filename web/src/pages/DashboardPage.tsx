@@ -561,7 +561,7 @@ export function DashboardPage() {
           <SettingItem label="监听地址" value={settings.data?.listenAddr ?? "-"} />
           <SettingItem label="日志级别" value={settings.data?.logLevel ?? "-"} />
           <SettingItem label="数据库" value={settings.data?.databaseBackend ?? "-"} />
-          <SettingItem label="管理后台" value={settings.data?.webConsoleEnabled ? "enabled" : "disabled"} />
+          <SettingItem label="管理后台" value={settings.data ? (settings.data.webConsoleEnabled ? "enabled" : "disabled") : "-"} />
         </div>
       </section>
     </div>
