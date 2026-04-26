@@ -1,0 +1,35 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Linkbit logo</title>
+  <desc id="desc">A secure low-latency network mark with linked nodes and a lightning path.</desc>
+  <defs>
+    <linearGradient id="bg" x1="32" y1="20" x2="224" y2="236" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0F766E"/>
+      <stop offset="0.55" stop-color="#155E75"/>
+      <stop offset="1" stop-color="#1E3A5F"/>
+    </linearGradient>
+    <linearGradient id="path" x1="71" y1="76" x2="185" y2="181" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#B8FFF3"/>
+      <stop offset="1" stop-color="#74D7FF"/>
+    </linearGradient>
+    <filter id="shadow" x="17" y="13" width="222" height="230" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="8"/>
+      <feGaussianBlur stdDeviation="10"/>
+      <feComposite in2="hardAlpha" operator="out"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.03 0 0 0 0 0.09 0 0 0 0 0.13 0 0 0 0.22 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
+    </filter>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="#F5F8FA"/>
+  <g filter="url(#shadow)">
+    <path d="M128 26L207 58V119C207 169 175 211 128 230C81 211 49 169 49 119V58L128 26Z" fill="url(#bg)"/>
+  </g>
+  <path d="M82 155L116 101L139 126L174 76L146 149L122 124L82 155Z" fill="url(#path)"/>
+  <circle cx="77" cy="161" r="15" fill="#E9FFFB" stroke="#8DEFE1" stroke-width="6"/>
+  <circle cx="179" cy="72" r="15" fill="#E9FFFB" stroke="#8DEFE1" stroke-width="6"/>
+  <circle cx="128" cy="126" r="12" fill="#0F766E" stroke="#D7FFF8" stroke-width="6"/>
+  <path d="M82 161H64C53 161 44 152 44 141V116" stroke="#D6F8F2" stroke-width="8" stroke-linecap="round"/>
+  <path d="M174 72H191C202 72 211 81 211 92V119" stroke="#D6F8F2" stroke-width="8" stroke-linecap="round"/>
+</svg>

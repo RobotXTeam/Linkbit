@@ -48,6 +48,36 @@ function normalizeControllerURL(input) {
   }
 }
 
+function defaultStatePath() {
+  return path.join(app.getPath("userData"), "agent-state.json");
+}
+
+function inspectStateFile(statePath) {
+  if (!statePath) {
+    return { ok: false, message: "State file path is required" };
+  }
+  if (!fs.existsSync(statePath)) {
+    return { ok: false, missing: true, message: `State file not found: ${statePath}` };
+  }
+  try {
+    fs.accessSync(statePath, fs.constants.R_OK);
+  } catch {
+    return {
+      ok: false,
+      unreadable: true,
+      message: `State file is not readable by this desktop app: ${statePath}`
+    };
+  }
+  try {
+    const state = JSON.parse(fs.readFileSync(statePath, "utf8"));
+    const hasDeviceCredentials = Boolean(state?.device?.id && state?.device?.deviceToken);
+    const hasWireGuardIdentity = Boolean(state?.wireGuardPrivateKey && state?.wireGuardPublicKey);
+    return { ok: hasDeviceCredentials, hasDeviceCredentials, hasWireGuardIdentity };
+  } catch (error) {
+    return { ok: false, message: `State file is invalid JSON: ${error.message || error}` };
+  }
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 980,
@@ -68,7 +98,7 @@ ipcMain.handle("settings:load", () => ({
   enrollmentKey: store.get("enrollmentKey", ""),
   deviceName: store.get("deviceName", os.hostname()),
   interfaceName: store.get("interfaceName", "linkbit0"),
-  statePath: store.get("statePath", path.join(app.getPath("userData"), "agent-state.json")),
+  statePath: store.get("statePath", defaultStatePath()),
   dryRun: store.get("dryRun", false),
   forwardListen: store.get("forwardListen", "127.0.0.1:10022"),
   forwardTarget: store.get("forwardTarget", "")
@@ -79,15 +109,31 @@ ipcMain.handle("agent:start", (_event, input) => {
     return { ok: false, message: "Agent is already running" };
   }
   const settings = {
-    controller: String(input.controller || "").trim(),
+    controller: normalizeControllerURL(input.controller),
     enrollmentKey: String(input.enrollmentKey || "").trim(),
     deviceName: String(input.deviceName || os.hostname()).trim(),
     interfaceName: String(input.interfaceName || "linkbit0").trim(),
-    statePath: String(input.statePath || path.join(app.getPath("userData"), "agent-state.json")).trim(),
+    statePath: String(input.statePath || defaultStatePath()).trim(),
     dryRun: Boolean(input.dryRun)
   };
   if (!settings.controller) {
-    return { ok: false, message: "Controller URL is required" };
+    return { ok: false, message: "Controller URL is required, for example https://controller.example.com" };
+  }
+  const stateStatus = inspectStateFile(settings.statePath);
+  if (!settings.enrollmentKey && (!stateStatus.ok || !stateStatus.hasDeviceCredentials)) {
+    if (stateStatus.missing) {
+      return { ok: false, message: "Enrollment key is required for first registration" };
+    }
+    if (stateStatus.unreadable) {
+      return {
+        ok: false,
+        message: `${stateStatus.message}. Copy the system agent state into this user profile or choose a readable state file.`
+      };
+    }
+    return {
+      ok: false,
+      message: "Agent state is missing device credentials. Enter an enrollment key or choose a state file that contains a registered device."
+    };
   }
   store.set(settings);
   fs.mkdirSync(path.dirname(settings.statePath), { recursive: true });
@@ -132,17 +178,36 @@ ipcMain.handle("agent:stop", () => {
 });
 
 ipcMain.handle("forward:start", (_event, input) => {
-  const controller = String(input.controller || "").trim();
-  const statePath = String(input.statePath || path.join(app.getPath("userData"), "agent-state.json")).trim();
+  const controller = normalizeControllerURL(input.controller);
+  const statePath = String(input.statePath || defaultStatePath()).trim();
   const listen = String(input.listen || "127.0.0.1:10022").trim();
   const target = String(input.target || "").trim();
-  if (!controller || !statePath || !listen || !target) {
-    return { ok: false, message: "Controller, state file, listen address, and target are required" };
+  if (!controller) {
+    return { ok: false, message: "Controller URL is required, for example https://controller.example.com" };
+  }
+  if (!statePath || !listen || !target) {
+    return { ok: false, message: "State file, listen address, and target are required" };
+  }
+  const stateStatus = inspectStateFile(statePath);
+  if (!stateStatus.ok || !stateStatus.hasDeviceCredentials) {
+    if (stateStatus.missing) {
+      return { ok: false, message: `${stateStatus.message}. Start Agent with an enrollment key first.` };
+    }
+    if (stateStatus.unreadable) {
+      return {
+        ok: false,
+        message: `${stateStatus.message}. Copy /var/lib/linkbit/agent-state.json to this user's Linkbit state file or run the forwarder with permissions that can read it.`
+      };
+    }
+    return {
+      ok: false,
+      message: "State file is missing device credentials. Use a registered Agent state file before starting SSH/RDP forwarding."
+    };
   }
   if (forwardProcesses.has(listen)) {
     return { ok: false, message: `Forward is already running on ${listen}` };
   }
-  store.set({ forwardListen: listen, forwardTarget: target });
+  store.set({ controller, statePath, forwardListen: listen, forwardTarget: target });
   const child = spawn(agentBinary(), [
     "forward",
     "--controller", controller,

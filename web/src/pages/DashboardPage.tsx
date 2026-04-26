@@ -91,6 +91,23 @@ export function DashboardPage() {
     queryFn: () => getAPIKeys(apiKey),
     enabled
   });
+  const queryError = [
+    overview.error,
+    settings.error,
+    devices.error,
+    relays.error,
+    policies.error,
+    apiKeys.error,
+    users.error,
+    groups.error
+  ].find((error): error is Error => error instanceof Error);
+  const connectionState = !enabled
+    ? "未连接"
+    : overview.isError
+      ? "认证失败"
+      : overview.isSuccess
+        ? "已连接"
+        : "连接中";
 
   const invite = useMutation({
     mutationFn: () => createInvitation(apiKey, inviteForm),
@@ -159,12 +176,12 @@ export function DashboardPage() {
 
   const stats = useMemo(
     () => [
-      { label: "在线设备", value: String(overview.data?.onlineDevices ?? 0), icon: Cpu },
-      { label: "中继节点", value: String(overview.data?.relayNodes ?? 0), icon: RadioTower },
-      { label: "网络健康度", value: overview.data?.networkHealth ?? "未连接", icon: Gauge },
-      { label: "策略数量", value: String(overview.data?.policyCount ?? 0), icon: Server }
+      { label: "在线设备", value: enabled ? String(overview.data?.onlineDevices ?? "-") : "-", icon: Cpu },
+      { label: "中继节点", value: enabled ? String(overview.data?.relayNodes ?? "-") : "-", icon: RadioTower },
+      { label: "网络健康度", value: enabled ? overview.data?.networkHealth ?? connectionState : "需要 API Key", icon: Gauge },
+      { label: "策略数量", value: enabled ? String(overview.data?.policyCount ?? "-") : "-", icon: Server }
     ],
-    [overview.data]
+    [connectionState, enabled, overview.data]
   );
 
   const saveKey = () => {
@@ -198,6 +215,19 @@ export function DashboardPage() {
         </div>
       </header>
 
+      <div
+        className={`mt-4 rounded-lg border p-3 text-sm ${
+          enabled && overview.isSuccess
+            ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+            : "border-amber-200 bg-amber-50 text-amber-800"
+        }`}
+      >
+        <span className="font-medium">管理台状态：{connectionState}</span>
+        {!enabled ? "。请先输入 Admin API Key 并点击连接，未连接时不会加载设备、中继和策略。" : null}
+        {enabled && overview.isLoading ? "。正在读取控制器数据。" : null}
+        {enabled && overview.isSuccess ? "。控制器数据已加载。" : null}
+      </div>
+
       <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-lg border border-border bg-white p-4">
@@ -210,9 +240,9 @@ export function DashboardPage() {
         ))}
       </section>
 
-      {overview.error instanceof Error ? (
+      {queryError ? (
         <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          {overview.error.message}
+          {queryError.message}
         </div>
       ) : null}
 
@@ -220,7 +250,9 @@ export function DashboardPage() {
         <div className="rounded-lg border border-border bg-white p-4">
           <h2 className="text-base font-semibold">最近设备</h2>
           <div className="mt-4 overflow-hidden rounded-md border border-border">
-            {(devices.data ?? []).length === 0 ? (
+            {!enabled ? (
+              <div className="p-6 text-sm text-muted-foreground">请输入 Admin API Key 后加载设备。</div>
+            ) : (devices.data ?? []).length === 0 ? (
               <div className="p-6 text-sm text-muted-foreground">暂无设备</div>
             ) : (
               (devices.data ?? []).map((device) => (
@@ -350,7 +382,11 @@ export function DashboardPage() {
             DERP map 区域数：{Object.keys(derpMap.data?.Regions ?? {}).length}
           </div>
           <div className="mt-4 grid gap-2">
-            {(relays.data ?? []).length === 0 ? (
+            {!enabled ? (
+              <div className="rounded-md border border-dashed border-border p-6 text-sm text-muted-foreground">
+                请输入 Admin API Key 后加载中继节点。
+              </div>
+            ) : (relays.data ?? []).length === 0 ? (
               <div className="rounded-md border border-dashed border-border p-6 text-sm text-muted-foreground">暂无中继节点</div>
             ) : (
               (relays.data ?? []).map((relay) => (
@@ -403,7 +439,11 @@ export function DashboardPage() {
             </Button>
           </form>
           <div className="mt-4 grid gap-2">
-            {(policies.data ?? []).length === 0 ? (
+            {!enabled ? (
+              <div className="rounded-md border border-dashed border-border p-6 text-sm text-muted-foreground">
+                请输入 Admin API Key 后加载网络策略。
+              </div>
+            ) : (policies.data ?? []).length === 0 ? (
               <div className="rounded-md border border-dashed border-border p-6 text-sm text-muted-foreground">暂无策略</div>
             ) : (
               (policies.data ?? []).map((policy) => (
