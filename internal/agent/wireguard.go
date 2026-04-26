@@ -103,6 +103,11 @@ func (m *WireGuardManager) applyCommands(ctx context.Context, network models.Net
 		if err := m.runner.Run(ctx, "wg", "set", m.cfg.WireGuardInterface, "peer", peer.PublicKey, "allowed-ips", peer.VirtualIP+"/32"); err != nil {
 			return err
 		}
+		if peer.Endpoint != "" {
+			if err := m.runner.Run(ctx, "wg", "set", m.cfg.WireGuardInterface, "peer", peer.PublicKey, "endpoint", peer.Endpoint); err != nil {
+				return err
+			}
+		}
 	}
 	if err := m.runner.Run(ctx, "ip", "link", "set", "dev", m.cfg.WireGuardInterface, "mtu", "1280"); err != nil {
 		return err

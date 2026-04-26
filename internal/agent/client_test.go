@@ -20,6 +20,9 @@ func TestHTTPRegistrationClient(t *testing.T) {
 			if req.EnrollmentKey != "invite" || req.Name != "device-1" || req.PublicKey != "pub" {
 				t.Fatalf("unexpected request: %+v", req)
 			}
+			if req.Endpoint != "198.51.100.10:41641" {
+				t.Fatalf("endpoint = %q, want %q", req.Endpoint, "198.51.100.10:41641")
+			}
 			_ = json.NewEncoder(w).Encode(models.DeviceRegistrationResponse{
 				Device: models.Device{ID: "device-id", VirtualIP: "100.96.1.2", DeviceToken: "device-token"},
 			})
@@ -42,7 +45,7 @@ func TestHTTPRegistrationClient(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewHTTPRegistrationClient(server.URL, "pub", "fp")
+	client := NewHTTPRegistrationClient(server.URL, "pub", "fp", "198.51.100.10:41641")
 	resp, err := client.Register(t.Context(), "invite", "device-1")
 	if err != nil {
 		t.Fatalf("Register() error = %v", err)

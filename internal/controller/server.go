@@ -415,6 +415,7 @@ func (s *Server) handleDeviceRegister(w http.ResponseWriter, r *http.Request) {
 		Name:        strings.TrimSpace(req.Name),
 		VirtualIP:   virtualIPFromUUID(uuid.New()),
 		PublicKey:   strings.TrimSpace(req.PublicKey),
+		Endpoint:    strings.TrimSpace(req.Endpoint),
 		TokenHash:   deviceTokenHash,
 		DeviceToken: deviceToken,
 		Status:      models.DeviceStatusOnline,
@@ -747,6 +748,7 @@ func allowedPeers(device models.Device, devices []models.Device, policies []mode
 				Name:      candidate.Name,
 				VirtualIP: candidate.VirtualIP,
 				PublicKey: candidate.PublicKey,
+				Endpoint:  candidate.Endpoint,
 			})
 		}
 	}

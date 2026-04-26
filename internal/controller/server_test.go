@@ -226,7 +226,7 @@ func TestInvitationRegistersDeviceOnce(t *testing.T) {
 		t.Fatalf("invitation leaked wrong fields: %+v", invitation)
 	}
 
-	registerBody := `{"enrollmentKey":"` + invitation.PlaintextToken + `","name":"laptop","publicKey":"wg-public-key","fingerprint":"fp-1"}`
+	registerBody := `{"enrollmentKey":"` + invitation.PlaintextToken + `","name":"laptop","publicKey":"wg-public-key","fingerprint":"fp-1","endpoint":"198.51.100.20:41641"}`
 	registerReq := httptest.NewRequest(http.MethodPost, "/api/v1/devices/register", bytes.NewBufferString(registerBody))
 	registerRec := httptest.NewRecorder()
 	handler.ServeHTTP(registerRec, registerReq)
@@ -239,6 +239,9 @@ func TestInvitationRegistersDeviceOnce(t *testing.T) {
 	}
 	if registration.Device.DeviceToken == "" || registration.Device.TokenHash != "" {
 		t.Fatalf("device leaked wrong token fields: %+v", registration.Device)
+	}
+	if registration.Device.Endpoint != "198.51.100.20:41641" {
+		t.Fatalf("endpoint = %q, want %q", registration.Device.Endpoint, "198.51.100.20:41641")
 	}
 
 	healthReq := httptest.NewRequest(http.MethodPost, "/api/v1/devices/"+registration.Device.ID+"/health", bytes.NewBufferString(`{"status":"online","latencyMs":8,"peersReachable":1,"peersTotal":1}`))

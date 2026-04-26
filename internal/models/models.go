@@ -45,6 +45,7 @@ type Device struct {
 	Name        string       `json:"name"`
 	VirtualIP   string       `json:"virtualIp"`
 	PublicKey   string       `json:"publicKey"`
+	Endpoint    string       `json:"endpoint,omitempty"`
 	TokenHash   string       `json:"-"`
 	DeviceToken string       `json:"deviceToken,omitempty"`
 	Status      DeviceStatus `json:"status"`
@@ -58,6 +59,7 @@ type DeviceRegistrationRequest struct {
 	Name          string `json:"name"`
 	PublicKey     string `json:"publicKey"`
 	Fingerprint   string `json:"fingerprint"`
+	Endpoint      string `json:"endpoint"`
 }
 
 type DeviceRegistrationResponse struct {
@@ -71,6 +73,7 @@ type DeviceHealthReport struct {
 	LatencyMS      int          `json:"latencyMs"`
 	PeersReachable int          `json:"peersReachable"`
 	PeersTotal     int          `json:"peersTotal"`
+	Endpoint       string       `json:"endpoint,omitempty"`
 }
 
 type NetworkPeer struct {
@@ -78,6 +81,7 @@ type NetworkPeer struct {
 	Name      string `json:"name"`
 	VirtualIP string `json:"virtualIp"`
 	PublicKey string `json:"publicKey"`
+	Endpoint  string `json:"endpoint,omitempty"`
 }
 
 type NetworkConfig struct {

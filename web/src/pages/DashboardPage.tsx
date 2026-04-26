@@ -219,7 +219,10 @@ export function DashboardPage() {
               (devices.data ?? []).map((device) => (
                 <div key={device.id} className="grid gap-1 border-b border-border p-3 text-sm last:border-b-0">
                   <div className="font-medium">{device.name}</div>
-                  <div className="text-muted-foreground">{device.virtualIp} · {device.status}</div>
+                  <div className="text-muted-foreground">
+                    {device.virtualIp} · {device.status}
+                    {device.endpoint ? ` · ${device.endpoint}` : ""}
+                  </div>
                 </div>
               ))
             )}

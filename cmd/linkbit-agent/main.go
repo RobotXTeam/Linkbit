@@ -21,6 +21,7 @@ func main() {
 	flag.StringVar(&cfg.EnrollmentKey, "enrollment-key", cfg.EnrollmentKey, "one-time enrollment key for first registration")
 	flag.StringVar(&cfg.DeviceName, "name", cfg.DeviceName, "device name")
 	flag.StringVar(&cfg.StatePath, "state", cfg.StatePath, "agent state file path")
+	flag.StringVar(&cfg.Endpoint, "endpoint", cfg.Endpoint, "optional WireGuard endpoint advertised to peers, host:port")
 	flag.StringVar(&cfg.WireGuardInterface, "interface", cfg.WireGuardInterface, "WireGuard interface name")
 	flag.BoolVar(&cfg.WireGuardDryRun, "dry-run", cfg.WireGuardDryRun, "validate controller flow without changing WireGuard interfaces")
 	flag.BoolVar(&cfg.RunOnce, "once", cfg.RunOnce, "register, apply config, report once, then exit")
@@ -32,9 +33,9 @@ func main() {
 	}
 	cfg.WireGuardPrivateKey = identity.PrivateKey
 	cfg.WireGuardPublicKey = identity.PublicKey
-	registration := agent.NewHTTPRegistrationClient(cfg.ControllerURL, identity.PublicKey, identity.Fingerprint)
+	registration := agent.NewHTTPRegistrationClient(cfg.ControllerURL, identity.PublicKey, identity.Fingerprint, cfg.Endpoint)
 	tunnel := agent.NewWireGuardManager(cfg, nil)
-	health := agent.NewControllerHealthReporter(registration)
+	health := agent.NewControllerHealthReporter(registration, cfg.Endpoint)
 	service, err := agent.NewService(cfg, registration, tunnel, health, logger)
 	if err != nil {
 		log.Fatalf("create agent: %v", err)

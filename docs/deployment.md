@@ -140,6 +140,12 @@ One-shot enrollment check without changing network interfaces:
 ./linkbit-agent --controller http://203.0.113.10 --enrollment-key <token> --dry-run --once
 ```
 
+Advertise a reachable WireGuard endpoint when the device has a stable address or port forwarding:
+
+```bash
+./linkbit-agent --controller http://203.0.113.10 --enrollment-key <token> --endpoint 198.51.100.20:41641
+```
+
 Long-running agent with real WireGuard changes:
 
 ```bash

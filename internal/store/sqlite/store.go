@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS devices (
 	name TEXT NOT NULL,
 	virtual_ip TEXT NOT NULL UNIQUE,
 	public_key TEXT NOT NULL,
+	endpoint TEXT NOT NULL DEFAULT '',
 	token_hash TEXT NOT NULL DEFAULT '',
 	status TEXT NOT NULL,
 	last_seen_at TEXT NOT NULL,
@@ -114,6 +115,7 @@ CREATE TABLE IF NOT EXISTS policies (
 	// duplicate-column error while still surfacing any unexpected migration issue.
 	for _, statement := range []string{
 		`ALTER TABLE devices ADD COLUMN token_hash TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE devices ADD COLUMN endpoint TEXT NOT NULL DEFAULT ''`,
 	} {
 		if _, err := s.db.ExecContext(ctx, statement); err != nil && !isDuplicateColumn(err) {
 			return err
@@ -340,15 +342,15 @@ UPDATE invitations SET used_at = ? WHERE id = ?
 
 func (s *Store) CreateDevice(ctx context.Context, device models.Device) error {
 	_, err := s.db.ExecContext(ctx, `
-INSERT INTO devices (id, user_id, group_id, name, virtual_ip, public_key, token_hash, status, last_seen_at, created_at, fingerprint)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`, device.ID, device.UserID, device.GroupID, device.Name, device.VirtualIP, device.PublicKey, device.TokenHash, device.Status, formatTime(device.LastSeenAt), formatTime(device.CreatedAt), device.Fingerprint)
+INSERT INTO devices (id, user_id, group_id, name, virtual_ip, public_key, endpoint, token_hash, status, last_seen_at, created_at, fingerprint)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`, device.ID, device.UserID, device.GroupID, device.Name, device.VirtualIP, device.PublicKey, device.Endpoint, device.TokenHash, device.Status, formatTime(device.LastSeenAt), formatTime(device.CreatedAt), device.Fingerprint)
 	return err
 }
 
 func (s *Store) GetDeviceByIDAndTokenHash(ctx context.Context, id string, tokenHash string) (models.Device, error) {
 	row := s.db.QueryRowContext(ctx, `
-SELECT id, user_id, group_id, name, virtual_ip, public_key, token_hash, status, last_seen_at, created_at, fingerprint
+SELECT id, user_id, group_id, name, virtual_ip, public_key, endpoint, token_hash, status, last_seen_at, created_at, fingerprint
 FROM devices WHERE id = ? AND token_hash = ?
 `, id, tokenHash)
 	return scanDevice(row)
@@ -359,9 +361,10 @@ func (s *Store) UpdateDeviceHealth(ctx context.Context, id string, tokenHash str
 	if status == "" {
 		status = models.DeviceStatusOnline
 	}
+	endpoint := report.Endpoint
 	res, err := s.db.ExecContext(ctx, `
-UPDATE devices SET status = ?, last_seen_at = ? WHERE id = ? AND token_hash = ?
-`, status, formatTime(time.Now().UTC()), id, tokenHash)
+	UPDATE devices SET status = ?, endpoint = CASE WHEN ? = '' THEN endpoint ELSE ? END, last_seen_at = ? WHERE id = ? AND token_hash = ?
+	`, status, endpoint, endpoint, formatTime(time.Now().UTC()), id, tokenHash)
 	if err != nil {
 		return models.Device{}, err
 	}
@@ -377,7 +380,7 @@ UPDATE devices SET status = ?, last_seen_at = ? WHERE id = ? AND token_hash = ?
 
 func (s *Store) ListDevices(ctx context.Context) ([]models.Device, error) {
 	rows, err := s.db.QueryContext(ctx, `
-SELECT id, user_id, group_id, name, virtual_ip, public_key, token_hash, status, last_seen_at, created_at, fingerprint
+SELECT id, user_id, group_id, name, virtual_ip, public_key, endpoint, token_hash, status, last_seen_at, created_at, fingerprint
 FROM devices ORDER BY created_at DESC
 `)
 	if err != nil {
@@ -483,7 +486,7 @@ FROM relays WHERE id = ?
 
 func (s *Store) getDevice(ctx context.Context, id string) (models.Device, error) {
 	row := s.db.QueryRowContext(ctx, `
-SELECT id, user_id, group_id, name, virtual_ip, public_key, token_hash, status, last_seen_at, created_at, fingerprint
+SELECT id, user_id, group_id, name, virtual_ip, public_key, endpoint, token_hash, status, last_seen_at, created_at, fingerprint
 FROM devices WHERE id = ?
 `, id)
 	return scanDevice(row)
@@ -558,7 +561,7 @@ func scanAPIKey(row scanner) (models.APIKey, error) {
 func scanDevice(row scanner) (models.Device, error) {
 	var device models.Device
 	var lastSeenAt, createdAt string
-	err := row.Scan(&device.ID, &device.UserID, &device.GroupID, &device.Name, &device.VirtualIP, &device.PublicKey, &device.TokenHash, &device.Status, &lastSeenAt, &createdAt, &device.Fingerprint)
+	err := row.Scan(&device.ID, &device.UserID, &device.GroupID, &device.Name, &device.VirtualIP, &device.PublicKey, &device.Endpoint, &device.TokenHash, &device.Status, &lastSeenAt, &createdAt, &device.Fingerprint)
 	if err != nil {
 		return device, err
 	}

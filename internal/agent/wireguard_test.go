@@ -27,7 +27,7 @@ func TestWireGuardManagerDryRun(t *testing.T) {
 
 	err := manager.Apply(t.Context(), models.NetworkConfig{
 		Device: models.Device{VirtualIP: "100.96.1.2"},
-		Peers:  []models.NetworkPeer{{VirtualIP: "100.96.1.3", PublicKey: "peer-public-key"}},
+		Peers:  []models.NetworkPeer{{VirtualIP: "100.96.1.3", PublicKey: "peer-public-key", Endpoint: "198.51.100.10:41641"}},
 	})
 	if err != nil {
 		t.Fatalf("Apply() error = %v", err)
@@ -53,7 +53,7 @@ func TestWireGuardManagerBuildsLinuxCommands(t *testing.T) {
 
 	err := manager.Apply(t.Context(), models.NetworkConfig{
 		Device: models.Device{VirtualIP: "100.96.1.2"},
-		Peers:  []models.NetworkPeer{{VirtualIP: "100.96.1.3", PublicKey: "peer-public-key"}},
+		Peers:  []models.NetworkPeer{{VirtualIP: "100.96.1.3", PublicKey: "peer-public-key", Endpoint: "198.51.100.10:41641"}},
 	})
 	if err != nil {
 		t.Fatalf("Apply() error = %v", err)
@@ -64,6 +64,7 @@ func TestWireGuardManagerBuildsLinuxCommands(t *testing.T) {
 		"ip link add dev linkbit0 type wireguard",
 		"ip address add 100.96.1.2/32 dev linkbit0",
 		"wg set linkbit0 peer peer-public-key allowed-ips 100.96.1.3/32",
+		"wg set linkbit0 peer peer-public-key endpoint 198.51.100.10:41641",
 		"ip link set dev linkbit0 mtu 1280",
 		"ip link set up dev linkbit0",
 	} {

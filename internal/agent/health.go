@@ -11,11 +11,16 @@ type DeviceHealthClient interface {
 }
 
 type ControllerHealthReporter struct {
-	client DeviceHealthClient
+	client   DeviceHealthClient
+	endpoint string
 }
 
-func NewControllerHealthReporter(client DeviceHealthClient) *ControllerHealthReporter {
-	return &ControllerHealthReporter{client: client}
+func NewControllerHealthReporter(client DeviceHealthClient, endpoint ...string) *ControllerHealthReporter {
+	value := ""
+	if len(endpoint) > 0 {
+		value = endpoint[0]
+	}
+	return &ControllerHealthReporter{client: client, endpoint: value}
 }
 
 func (r *ControllerHealthReporter) CheckAndReport(ctx context.Context, registration models.DeviceRegistrationResponse) error {
@@ -23,7 +28,8 @@ func (r *ControllerHealthReporter) CheckAndReport(ctx context.Context, registrat
 		return nil
 	}
 	_, err := r.client.ReportHealth(ctx, models.DeviceHealthReport{
-		Status: models.DeviceStatusOnline,
+		Status:   models.DeviceStatusOnline,
+		Endpoint: r.endpoint,
 	})
 	return err
 }
