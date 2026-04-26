@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -38,6 +39,7 @@ type AgentConfig struct {
 	WireGuardPrivateKey string
 	WireGuardPublicKey  string
 	WireGuardDryRun     bool
+	StatePath           string
 }
 
 func LoadController() (ControllerConfig, error) {
@@ -78,6 +80,7 @@ func LoadAgent() AgentConfig {
 		WireGuardPrivateKey: os.Getenv("LINKBIT_WG_PRIVATE_KEY"),
 		WireGuardPublicKey:  os.Getenv("LINKBIT_WG_PUBLIC_KEY"),
 		WireGuardDryRun:     getenvBool("LINKBIT_WG_DRY_RUN", false),
+		StatePath:           getenv("LINKBIT_STATE_PATH", defaultAgentStatePath()),
 	}
 }
 
@@ -119,4 +122,11 @@ func hostname() string {
 		return "linkbit-device"
 	}
 	return name
+}
+
+func defaultAgentStatePath() string {
+	if dir, err := os.UserConfigDir(); err == nil && dir != "" {
+		return filepath.Join(dir, "linkbit", "agent-state.json")
+	}
+	return "linkbit-agent-state.json"
 }

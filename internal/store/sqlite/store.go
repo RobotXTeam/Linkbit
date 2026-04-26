@@ -119,6 +119,15 @@ CREATE TABLE IF NOT EXISTS policies (
 			return err
 		}
 	}
+	now := formatTime(time.Now().UTC())
+	if _, err := s.db.ExecContext(ctx, `
+INSERT OR IGNORE INTO users (id, name, email, role, created_at)
+VALUES ('default-user', 'Default User', '', 'admin', ?);
+INSERT OR IGNORE INTO groups (id, name, description, created_at)
+VALUES ('default', 'Default', 'Default Linkbit device group', ?);
+`, now, now); err != nil {
+		return err
+	}
 	return err
 }
 

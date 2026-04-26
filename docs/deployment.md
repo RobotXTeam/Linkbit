@@ -133,6 +133,7 @@ Required environment:
 
 The Linux agent performs controller registration, creates a WireGuard interface through `ip` and `wg`, and reports health back to the controller with a device-scoped token.
 Use `deploy/agent.env.example` as the non-secret template.
+The agent stores its device token in `LINKBIT_STATE_PATH` after first enrollment, so later restarts no longer need the one-time enrollment key.
 
 Install:
 
@@ -140,3 +141,8 @@ Install:
 ./scripts/build-linux-amd64.sh
 sudo ./deploy/install-agent.sh
 ```
+
+## First Device
+
+Fresh controllers seed a `default-user` user and a `default` device group so the web console can generate an invitation immediately after you enter an admin API key.
+The invitation panel shows both the raw token and a ready-to-run agent command.

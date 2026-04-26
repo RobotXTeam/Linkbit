@@ -58,6 +58,33 @@ func TestSettingsRequiresAPIKeyAndOmitsSecrets(t *testing.T) {
 	}
 }
 
+func TestDefaultUserAndGroupAreSeeded(t *testing.T) {
+	server := newTestServer(t)
+	handler := server.Handler()
+
+	usersReq := httptest.NewRequest(http.MethodGet, "/api/v1/users", nil)
+	usersReq.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
+	usersRec := httptest.NewRecorder()
+	handler.ServeHTTP(usersRec, usersReq)
+	if usersRec.Code != http.StatusOK {
+		t.Fatalf("users status = %d, want %d; body=%s", usersRec.Code, http.StatusOK, usersRec.Body.String())
+	}
+	if !strings.Contains(usersRec.Body.String(), "default-user") {
+		t.Fatalf("default user missing: %s", usersRec.Body.String())
+	}
+
+	groupsReq := httptest.NewRequest(http.MethodGet, "/api/v1/groups", nil)
+	groupsReq.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
+	groupsRec := httptest.NewRecorder()
+	handler.ServeHTTP(groupsRec, groupsReq)
+	if groupsRec.Code != http.StatusOK {
+		t.Fatalf("groups status = %d, want %d; body=%s", groupsRec.Code, http.StatusOK, groupsRec.Body.String())
+	}
+	if !strings.Contains(groupsRec.Body.String(), `"id":"default"`) {
+		t.Fatalf("default group missing: %s", groupsRec.Body.String())
+	}
+}
+
 func TestRelayRegistration(t *testing.T) {
 	server := newTestServer(t)
 	handler := server.Handler()

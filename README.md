@@ -22,6 +22,7 @@ This repository currently contains the first-step project skeleton, dependency a
 - Docker/Compose and Caddy templates are included.
 - Linux agent has a WireGuard command manager; tray and RustDesk boundaries are in place.
 - Remote deployment helpers build binaries, upload the web console, and verify controller/relay health.
+- Fresh controllers seed `default-user` and `default`, and the agent persists device state after first enrollment.
 
 ## Repository Layout
 

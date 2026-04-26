@@ -164,6 +164,10 @@ export function DashboardPage() {
     storeAPIKey(apiKeyInput);
     setApiKey(apiKeyInput.trim());
   };
+  const controllerURL = settings.data?.publicUrl || window.location.origin;
+  const enrollmentCommand = lastToken
+    ? `LINKBIT_CONTROLLER_URL=${controllerURL} LINKBIT_ENROLLMENT_KEY=${lastToken} LINKBIT_WG_DRY_RUN=true ./linkbit-agent`
+    : "";
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-6">
@@ -243,18 +247,32 @@ export function DashboardPage() {
             />
           </div>
           {lastToken ? (
-            <button
-              className="mt-4 flex w-full items-center justify-between gap-3 rounded-md border border-border bg-muted p-3 text-left text-xs"
-              onClick={() => void navigator.clipboard.writeText(lastToken)}
-            >
-              <span className="break-all">{lastToken}</span>
-              <Copy className="h-4 w-4 shrink-0" />
-            </button>
+            <div className="mt-4 grid gap-2">
+              <button
+                className="flex w-full items-center justify-between gap-3 rounded-md border border-border bg-muted p-3 text-left text-xs"
+                onClick={() => void navigator.clipboard.writeText(lastToken)}
+              >
+                <span className="break-all">{lastToken}</span>
+                <Copy className="h-4 w-4 shrink-0" />
+              </button>
+              <button
+                className="flex w-full items-center justify-between gap-3 rounded-md border border-border bg-white p-3 text-left text-xs"
+                onClick={() => void navigator.clipboard.writeText(enrollmentCommand)}
+              >
+                <span className="break-all">{enrollmentCommand}</span>
+                <Copy className="h-4 w-4 shrink-0" />
+              </button>
+            </div>
           ) : (
             <div className="mt-4 rounded-md border border-dashed border-border p-6 text-sm text-muted-foreground">
               生成后只显示一次。
             </div>
           )}
+          {invite.error instanceof Error ? (
+            <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {invite.error.message}
+            </div>
+          ) : null}
         </div>
       </section>
 

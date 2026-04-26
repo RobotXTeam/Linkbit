@@ -29,13 +29,8 @@ for _ in $(seq 1 60); do
   sleep 0.2
 done
 
-curl -fsS -H "X-Linkbit-API-Key: $ADMIN_KEY" -H 'Content-Type: application/json' \
-  -d '{"id":"default-user","name":"Default User","role":"member"}' \
-  "$BASE/api/v1/users" >/dev/null
-
-curl -fsS -H "X-Linkbit-API-Key: $ADMIN_KEY" -H 'Content-Type: application/json' \
-  -d '{"id":"default","name":"Default Group"}' \
-  "$BASE/api/v1/groups" >/dev/null
+curl -fsS -H "X-Linkbit-API-Key: $ADMIN_KEY" "$BASE/api/v1/users" | grep -q '"id":"default-user"'
+curl -fsS -H "X-Linkbit-API-Key: $ADMIN_KEY" "$BASE/api/v1/groups" | grep -q '"id":"default"'
 
 curl -fsS -H "X-Linkbit-API-Key: $ADMIN_KEY" -H 'Content-Type: application/json' \
   -d '{"id":"relay-smoke","name":"Smoke Relay","region":"default","publicUrl":"http://127.0.0.1:8443"}' \

@@ -21,6 +21,10 @@ type HTTPRegistrationClient struct {
 	client        *http.Client
 }
 
+type DeviceCredentialSetter interface {
+	SetDeviceCredentials(deviceID string, deviceToken string)
+}
+
 func NewHTTPRegistrationClient(controllerURL string, publicKey string, fingerprint string) *HTTPRegistrationClient {
 	return &HTTPRegistrationClient{
 		controllerURL: strings.TrimRight(controllerURL, "/"),
@@ -28,6 +32,11 @@ func NewHTTPRegistrationClient(controllerURL string, publicKey string, fingerpri
 		fingerprint:   fingerprint,
 		client:        &http.Client{Timeout: 10 * time.Second},
 	}
+}
+
+func (c *HTTPRegistrationClient) SetDeviceCredentials(deviceID string, deviceToken string) {
+	c.deviceID = deviceID
+	c.deviceToken = deviceToken
 }
 
 func (c *HTTPRegistrationClient) ReportHealth(ctx context.Context, report models.DeviceHealthReport) (models.Device, error) {
