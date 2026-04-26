@@ -321,6 +321,28 @@ func TestDeviceDeleteRemovesDeviceAndToken(t *testing.T) {
 	}
 }
 
+func TestWireGuardEndpointValidation(t *testing.T) {
+	tests := []struct {
+		endpoint string
+		want     bool
+	}{
+		{"", true},
+		{"198.51.100.20:41641", true},
+		{"relay.example.com:41641", true},
+		{"[2001:db8::1]:41641", true},
+		{"198.51.100.20", false},
+		{"198.51.100.20:0", false},
+		{"198.51.100.20:65536", false},
+		{"198.51.100.20:bad", false},
+		{"198.51.100.20:41641 extra", false},
+	}
+	for _, tt := range tests {
+		if got := validWireGuardEndpoint(tt.endpoint); got != tt.want {
+			t.Fatalf("validWireGuardEndpoint(%q) = %v, want %v", tt.endpoint, got, tt.want)
+		}
+	}
+}
+
 func TestInvitationRequiresKnownUserAndGroup(t *testing.T) {
 	server := newTestServer(t)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/invitations", bytes.NewBufferString(`{"userId":"missing","groupId":"missing","expiresInSeconds":3600}`))

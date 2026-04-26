@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -389,6 +391,11 @@ func (s *Server) handleDeviceRegister(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "enrollmentKey, name, and publicKey are required")
 		return
 	}
+	endpoint := strings.TrimSpace(req.Endpoint)
+	if !validWireGuardEndpoint(endpoint) {
+		writeError(w, http.StatusBadRequest, "endpoint must be host:port when provided")
+		return
+	}
 
 	tokenHash, err := auth.HashAPIKey(req.EnrollmentKey, s.cfg.APIKeyPepper)
 	if err != nil {
@@ -433,7 +440,7 @@ func (s *Server) handleDeviceRegister(w http.ResponseWriter, r *http.Request) {
 		Name:        strings.TrimSpace(req.Name),
 		VirtualIP:   virtualIPFromUUID(uuid.New()),
 		PublicKey:   strings.TrimSpace(req.PublicKey),
-		Endpoint:    strings.TrimSpace(req.Endpoint),
+		Endpoint:    endpoint,
 		TokenHash:   deviceTokenHash,
 		DeviceToken: deviceToken,
 		Status:      models.DeviceStatusOnline,
@@ -478,6 +485,11 @@ func (s *Server) handleDeviceHealth(w http.ResponseWriter, r *http.Request) {
 	var report models.DeviceHealthReport
 	if err := decodeJSON(w, r, &report); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid health payload")
+		return
+	}
+	report.Endpoint = strings.TrimSpace(report.Endpoint)
+	if !validWireGuardEndpoint(report.Endpoint) {
+		writeError(w, http.StatusBadRequest, "endpoint must be host:port when provided")
 		return
 	}
 	device, err := s.store.UpdateDeviceHealth(r.Context(), deviceID, tokenHash, report)
@@ -775,6 +787,24 @@ func allowedPeers(device models.Device, devices []models.Device, policies []mode
 
 func policyAllows(selector string, device models.Device) bool {
 	return selector == "*" || selector == device.ID || selector == device.GroupID
+}
+
+func validWireGuardEndpoint(endpoint string) bool {
+	if endpoint == "" {
+		return true
+	}
+	if strings.ContainsAny(endpoint, " \t\r\n") {
+		return false
+	}
+	host, portValue, err := net.SplitHostPort(endpoint)
+	if err != nil || host == "" || portValue == "" {
+		return false
+	}
+	port, err := strconv.Atoi(portValue)
+	if err != nil || port < 1 || port > 65535 {
+		return false
+	}
+	return true
 }
 
 func virtualIPFromUUID(id uuid.UUID) string {
