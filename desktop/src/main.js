@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, shell } = require("electron");
 const Store = require("electron-store");
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
+const net = require("node:net");
 const os = require("node:os");
 const path = require("node:path");
 
@@ -78,6 +79,43 @@ function inspectStateFile(statePath) {
   }
 }
 
+function isPrivilegedProcess() {
+  return process.platform === "win32" || typeof process.getuid !== "function" || process.getuid() === 0;
+}
+
+function checkListenAvailable(listenAddr) {
+  return new Promise((resolve) => {
+    let host = "127.0.0.1";
+    let portValue = listenAddr;
+    const split = net.isIPv6(listenAddr) ? ["", listenAddr] : listenAddr.match(/^(.*):(\d+)$/);
+    if (split) {
+      host = split[1] || host;
+      portValue = split[2];
+    }
+    const port = Number(portValue);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      resolve({ ok: false, message: "Local listen address must include a valid port, for example 127.0.0.1:10022" });
+      return;
+    }
+    const server = net.createServer();
+    server.once("error", (error) => {
+      if (error.code === "EADDRINUSE") {
+        resolve({
+          ok: false,
+          inUse: true,
+          message: `Port ${listenAddr} is already in use. Try connecting now, stop the existing forward, or choose another local port.`
+        });
+        return;
+      }
+      resolve({ ok: false, message: `Cannot listen on ${listenAddr}: ${error.message || error}` });
+    });
+    server.once("listening", () => {
+      server.close(() => resolve({ ok: true }));
+    });
+    server.listen(port, host || "127.0.0.1");
+  });
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 980,
@@ -118,6 +156,12 @@ ipcMain.handle("agent:start", (_event, input) => {
   };
   if (!settings.controller) {
     return { ok: false, message: "Controller URL is required, for example https://controller.example.com" };
+  }
+  if (!settings.dryRun && !isPrivilegedProcess()) {
+    return {
+      ok: false,
+      message: "WireGuard Agent requires administrator/root permission on this platform. Use the installed system service for the tunnel, or use SSH/RDP forwarding with the existing state file."
+    };
   }
   const stateStatus = inspectStateFile(settings.statePath);
   if (!settings.enrollmentKey && (!stateStatus.ok || !stateStatus.hasDeviceCredentials)) {
@@ -177,7 +221,7 @@ ipcMain.handle("agent:stop", () => {
   return { ok: true, message: "Agent stopped" };
 });
 
-ipcMain.handle("forward:start", (_event, input) => {
+ipcMain.handle("forward:start", async (_event, input) => {
   const controller = normalizeControllerURL(input.controller);
   const statePath = String(input.statePath || defaultStatePath()).trim();
   const listen = String(input.listen || "127.0.0.1:10022").trim();
@@ -206,6 +250,10 @@ ipcMain.handle("forward:start", (_event, input) => {
   }
   if (forwardProcesses.has(listen)) {
     return { ok: false, message: `Forward is already running on ${listen}` };
+  }
+  const listenStatus = await checkListenAvailable(listen);
+  if (!listenStatus.ok) {
+    return { ok: false, message: listenStatus.message };
   }
   store.set({ controller, statePath, forwardListen: listen, forwardTarget: target });
   const child = spawn(agentBinary(), [

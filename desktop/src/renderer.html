@@ -94,6 +94,12 @@
         color: #52606b;
         font-size: 13px;
       }
+      .hint {
+        margin: -4px 0 12px;
+        color: #52606b;
+        font-size: 12px;
+        line-height: 1.4;
+      }
     </style>
   </head>
   <body>
@@ -112,6 +118,7 @@
         <label>设备名称<input id="deviceName" /></label>
         <label>WireGuard 接口<input id="interfaceName" /></label>
         <label>状态文件<input id="statePath" /></label>
+        <div class="hint">启动连接会配置 WireGuard，需要管理员权限。已安装系统 Agent 时，日常访问 FriendlyWrt 只需要使用下面的 SSH/RDP 中转。</div>
         <label class="row"><input id="dryRun" type="checkbox" style="height:16px;width:16px" /> dry-run 测试模式</label>
         <div class="row">
           <button id="start">启动连接</button>

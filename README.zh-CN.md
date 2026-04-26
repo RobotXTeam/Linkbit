@@ -158,9 +158,30 @@ LINKBIT_HUB_WG_ENDPOINT=controller.example.com:443
 ./deploy/install-relay.sh
 ```
 
-### 4. 加入设备
+### 4. 登录管理后台
 
-在 Web 管理后台生成邀请码后运行：
+打开控制器地址，例如：
+
+```text
+http://120.79.155.227/
+```
+
+页面顶部的 `Admin API Key` 不是邀请码。它是管理员密钥，用来读取设备、中继、策略和系统设置。生产部署时它来自控制器环境变量 `LINKBIT_BOOTSTRAP_API_KEY`，或由管理员在 API Key 页面创建。
+
+当前测试部署中，管理员密钥保存在本机的忽略文件中：
+
+```bash
+cat .tools/remote-bootstrap-key
+```
+
+把输出粘贴到 `Admin API Key`，点击 `连接`。连接成功后才会显示真实设备数量、中继节点和策略。
+
+### 5. 邀请码和加入设备
+
+邀请码只用于新设备第一次加入 Linkbit 网络。已经注册过的设备不会再使用原来的邀请码；它们依靠本机状态文件里的设备 ID 和 device token 继续连接。
+
+在管理后台的 `设备邀请` 区域点击 `生成`，会得到一次性邀请码和等价命令。然后在新设备上运行：
+
 
 ```bash
 sudo ./linkbit-agent \
@@ -172,6 +193,13 @@ sudo ./linkbit-agent \
 
 也可以使用 Linkbit 桌面客户端，直接填写控制器地址和邀请码启动连接。
 
+当前 FriendlyWrt 已经注册为设备 `friendlywrt`，虚拟 IP 是 `10.88.92.200`，所以它没有“现在要用的邀请码”。要访问它，直接使用桌面客户端的中转功能：
+
+```text
+本地监听：127.0.0.1:10022
+远端目标：friendlywrt:22
+```
+
 ## 桌面客户端怎么用
 
 ### 连接设备
@@ -182,6 +210,8 @@ sudo ./linkbit-agent \
 4. 设置设备名称，例如 `workstation` 或 `friendlywrt`。
 5. `WireGuard 接口` 默认保持 `linkbit0`。
 6. 点击 `启动连接`。
+
+Linux 上创建 WireGuard 接口需要管理员权限。如果已经安装了系统 Agent，普通桌面客户端不需要再点 `启动连接`，直接使用下面的 SSH/RDP 中转即可。
 
 日志里出现 `device registered`、`loaded device state` 或 `tcp relay target enabled` 后，设备就可以使用了。
 
@@ -203,6 +233,8 @@ sudo ./linkbit-agent \
 ```bash
 ssh -p 10022 root@127.0.0.1
 ```
+
+如果提示 `address already in use`，说明 `127.0.0.1:10022` 已经有一个中转或其他服务在监听。可以直接执行上面的 SSH 命令测试，或者把 `本地监听` 改成 `127.0.0.1:10023` 再启动。
 
 也可以直接填虚拟 IP：
 

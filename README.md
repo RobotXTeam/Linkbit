@@ -157,9 +157,30 @@ Install:
 ./deploy/install-relay.sh
 ```
 
-### 4. Enroll a device
+### 4. Sign in to the web console
 
-Create an invitation from the web console, then run:
+Open the controller URL, for example:
+
+```text
+http://120.79.155.227/
+```
+
+The `Admin API Key` at the top of the page is not an enrollment token. It is the administrator key used to load devices, relays, policies, and system settings. In production it comes from `LINKBIT_BOOTSTRAP_API_KEY`, or from an admin-created API key.
+
+For the current test deployment, the admin key is stored in the local ignored file:
+
+```bash
+cat .tools/remote-bootstrap-key
+```
+
+Paste the output into `Admin API Key` and click `Connect`. The console only loads real device, relay, and policy data after that.
+
+### 5. Enrollment tokens and device enrollment
+
+Enrollment tokens are only for a new device's first registration. Devices that are already registered do not keep using their original token; they reconnect with the device ID and device token stored in their local state file.
+
+In the web console, use `Device Invitation` and click `Generate`. The console shows a one-time token and an equivalent command. Then run this on the new device:
+
 
 ```bash
 sudo ./linkbit-agent \
@@ -171,6 +192,13 @@ sudo ./linkbit-agent \
 
 For visual operation, use the Linkbit desktop client AppImage and enter the same controller URL and enrollment token.
 
+The current FriendlyWrt target is already registered as `friendlywrt`, with virtual IP `10.88.92.200`, so it does not need a new enrollment token. Access it through desktop forwarding:
+
+```text
+Local Listen: 127.0.0.1:10022
+Remote Target: friendlywrt:22
+```
+
 ## How To Use The Desktop Client
 
 ### Connect a device
@@ -181,6 +209,8 @@ For visual operation, use the Linkbit desktop client AppImage and enter the same
 4. Set a readable device name, for example `workstation` or `friendlywrt`.
 5. Keep the interface name as `linkbit0` unless you need a custom interface.
 6. Click `Start Agent`.
+
+Creating a WireGuard interface on Linux requires administrator/root permission. If the system Agent is already installed, the normal desktop client does not need to start the Agent again; use SSH/RDP forwarding directly.
 
 When the log shows `device registered`, `loaded device state`, or `tcp relay target enabled`, the device is ready.
 
@@ -202,6 +232,8 @@ Then connect from the local machine:
 ```bash
 ssh -p 10022 root@127.0.0.1
 ```
+
+If the app says `address already in use`, `127.0.0.1:10022` already has a forward or another service listening. Try the SSH command above directly, or change `Local Listen` to `127.0.0.1:10023`.
 
 You can also target a virtual IP:
 
