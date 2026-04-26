@@ -268,6 +268,59 @@ func TestInvitationRegistersDeviceOnce(t *testing.T) {
 	}
 }
 
+func TestDeviceDeleteRemovesDeviceAndToken(t *testing.T) {
+	server := newTestServer(t)
+	handler := server.Handler()
+
+	inviteReq := httptest.NewRequest(http.MethodPost, "/api/v1/invitations", bytes.NewBufferString(`{"userId":"default-user","groupId":"default","expiresInSeconds":3600}`))
+	inviteReq.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
+	inviteRec := httptest.NewRecorder()
+	handler.ServeHTTP(inviteRec, inviteReq)
+	if inviteRec.Code != http.StatusCreated {
+		t.Fatalf("invite status = %d, want %d; body=%s", inviteRec.Code, http.StatusCreated, inviteRec.Body.String())
+	}
+	var invitation models.Invitation
+	if err := json.NewDecoder(inviteRec.Body).Decode(&invitation); err != nil {
+		t.Fatalf("decode invitation: %v", err)
+	}
+
+	registerBody := `{"enrollmentKey":"` + invitation.PlaintextToken + `","name":"delete-me","publicKey":"wg-public-key","fingerprint":"fp-delete"}`
+	registerReq := httptest.NewRequest(http.MethodPost, "/api/v1/devices/register", bytes.NewBufferString(registerBody))
+	registerRec := httptest.NewRecorder()
+	handler.ServeHTTP(registerRec, registerReq)
+	if registerRec.Code != http.StatusCreated {
+		t.Fatalf("register status = %d, want %d; body=%s", registerRec.Code, http.StatusCreated, registerRec.Body.String())
+	}
+	var registration models.DeviceRegistrationResponse
+	if err := json.NewDecoder(registerRec.Body).Decode(&registration); err != nil {
+		t.Fatalf("decode registration: %v", err)
+	}
+
+	deleteReq := httptest.NewRequest(http.MethodDelete, "/api/v1/devices/"+registration.Device.ID, nil)
+	deleteReq.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
+	deleteRec := httptest.NewRecorder()
+	handler.ServeHTTP(deleteRec, deleteReq)
+	if deleteRec.Code != http.StatusNoContent {
+		t.Fatalf("delete status = %d, want %d; body=%s", deleteRec.Code, http.StatusNoContent, deleteRec.Body.String())
+	}
+
+	healthReq := httptest.NewRequest(http.MethodPost, "/api/v1/devices/"+registration.Device.ID+"/health", bytes.NewBufferString(`{"status":"online"}`))
+	healthReq.Header.Set(linkbitapi.HeaderDeviceToken, registration.Device.DeviceToken)
+	healthRec := httptest.NewRecorder()
+	handler.ServeHTTP(healthRec, healthReq)
+	if healthRec.Code != http.StatusUnauthorized {
+		t.Fatalf("deleted device health status = %d, want %d; body=%s", healthRec.Code, http.StatusUnauthorized, healthRec.Body.String())
+	}
+
+	deleteAgainReq := httptest.NewRequest(http.MethodDelete, "/api/v1/devices/"+registration.Device.ID, nil)
+	deleteAgainReq.Header.Set(linkbitapi.HeaderAPIKey, "test-admin-key")
+	deleteAgainRec := httptest.NewRecorder()
+	handler.ServeHTTP(deleteAgainRec, deleteAgainReq)
+	if deleteAgainRec.Code != http.StatusNotFound {
+		t.Fatalf("second delete status = %d, want %d; body=%s", deleteAgainRec.Code, http.StatusNotFound, deleteAgainRec.Body.String())
+	}
+}
+
 func TestInvitationRequiresKnownUserAndGroup(t *testing.T) {
 	server := newTestServer(t)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/invitations", bytes.NewBufferString(`{"userId":"missing","groupId":"missing","expiresInSeconds":3600}`))

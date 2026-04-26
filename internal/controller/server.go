@@ -63,6 +63,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/v1/relays/heartbeat", s.requireAPIKeyScopes(http.HandlerFunc(s.handleRelayHeartbeat), "admin", "relay"))
 	mux.Handle("GET /api/v1/relays", s.requireAPIKey(http.HandlerFunc(s.handleRelayList)))
 	mux.Handle("GET /api/v1/devices", s.requireAPIKey(http.HandlerFunc(s.handleDeviceList)))
+	mux.Handle("DELETE /api/v1/devices/{id}", s.requireAPIKey(http.HandlerFunc(s.handleDeviceDelete)))
 	mux.HandleFunc("POST /api/v1/devices/register", s.handleDeviceRegister)
 	mux.HandleFunc("POST /api/v1/devices/{id}/health", s.handleDeviceHealth)
 	mux.HandleFunc("GET /api/v1/devices/{id}/network-config", s.handleDeviceNetworkConfig)
@@ -359,6 +360,23 @@ func (s *Server) handleDeviceList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, devices)
+}
+
+func (s *Server) handleDeviceDelete(w http.ResponseWriter, r *http.Request) {
+	deviceID := strings.TrimSpace(r.PathValue("id"))
+	if deviceID == "" {
+		writeError(w, http.StatusBadRequest, "device id is required")
+		return
+	}
+	if err := s.store.DeleteDevice(r.Context(), deviceID); store.IsNotFound(err) {
+		writeError(w, http.StatusNotFound, "device not found")
+		return
+	} else if err != nil {
+		s.logger.Error("delete device failed", "err", err)
+		writeError(w, http.StatusInternalServerError, "device deletion failed")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) handleDeviceRegister(w http.ResponseWriter, r *http.Request) {

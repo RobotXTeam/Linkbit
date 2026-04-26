@@ -36,6 +36,7 @@ type Store interface {
 	MarkInvitationUsed(context.Context, string) error
 
 	CreateDevice(context.Context, models.Device) error
+	DeleteDevice(context.Context, string) error
 	GetDeviceByIDAndTokenHash(context.Context, string, string) (models.Device, error)
 	UpdateDeviceHealth(context.Context, string, string, models.DeviceHealthReport) (models.Device, error)
 	ListDevices(context.Context) ([]models.Device, error)

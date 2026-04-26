@@ -109,6 +109,19 @@ paths:
       responses:
         "200":
           description: List devices
+  /api/v1/devices/{id}:
+    delete:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Device removed
+        "404":
+          description: Device not found
   /api/v1/devices/register:
     post:
       security: []

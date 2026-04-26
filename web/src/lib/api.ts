@@ -124,6 +124,10 @@ export async function getDevices(apiKey: string) {
   return z.array(deviceSchema).parse(await request("/api/v1/devices", apiKey));
 }
 
+export async function deleteDevice(apiKey: string, id: string) {
+  await request(`/api/v1/devices/${encodeURIComponent(id)}`, apiKey, { method: "DELETE" });
+}
+
 export async function getUsers(apiKey: string) {
   return z.array(userSchema).parse(await request("/api/v1/users", apiKey));
 }

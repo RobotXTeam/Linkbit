@@ -8,6 +8,7 @@ import {
   createInvitation,
   createPolicy,
   createUser,
+  deleteDevice,
   deletePolicy,
   deleteRelay,
   getDERPMap,
@@ -137,6 +138,12 @@ export function DashboardPage() {
       queryKeys.forEach((key) => void queryClient.invalidateQueries({ queryKey: [key, apiKey] }));
     }
   });
+  const removeDevice = useMutation({
+    mutationFn: (id: string) => deleteDevice(apiKey, id),
+    onSuccess: () => {
+      queryKeys.forEach((key) => void queryClient.invalidateQueries({ queryKey: [key, apiKey] }));
+    }
+  });
   const removePolicy = useMutation({
     mutationFn: (id: string) => deletePolicy(apiKey, id),
     onSuccess: () => {
@@ -217,12 +224,17 @@ export function DashboardPage() {
               <div className="p-6 text-sm text-muted-foreground">暂无设备</div>
             ) : (
               (devices.data ?? []).map((device) => (
-                <div key={device.id} className="grid gap-1 border-b border-border p-3 text-sm last:border-b-0">
-                  <div className="font-medium">{device.name}</div>
-                  <div className="text-muted-foreground">
-                    {device.virtualIp} · {device.status}
-                    {device.endpoint ? ` · ${device.endpoint}` : ""}
+                <div key={device.id} className="flex items-start justify-between gap-3 border-b border-border p-3 text-sm last:border-b-0">
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">{device.name}</div>
+                    <div className="break-all text-muted-foreground">
+                      {device.virtualIp} · {device.status}
+                      {device.endpoint ? ` · ${device.endpoint}` : ""}
+                    </div>
                   </div>
+                  <Button variant="ghost" onClick={() => removeDevice.mutate(device.id)} disabled={removeDevice.isPending}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               ))
             )}

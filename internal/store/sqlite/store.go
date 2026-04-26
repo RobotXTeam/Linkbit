@@ -348,6 +348,21 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	return err
 }
 
+func (s *Store) DeleteDevice(ctx context.Context, id string) error {
+	res, err := s.db.ExecContext(ctx, `DELETE FROM devices WHERE id = ?`, id)
+	if err != nil {
+		return err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
 func (s *Store) GetDeviceByIDAndTokenHash(ctx context.Context, id string, tokenHash string) (models.Device, error) {
 	row := s.db.QueryRowContext(ctx, `
 SELECT id, user_id, group_id, name, virtual_ip, public_key, endpoint, token_hash, status, last_seen_at, created_at, fingerprint
