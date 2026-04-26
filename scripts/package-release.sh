@@ -40,6 +40,8 @@ build_platform() {
   CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" "$GO_BIN" build -ldflags "$ldflags" -o "$pkg_dir/bin/linkbit-agent$ext" ./cmd/linkbit-agent
 
   cp README.md "$pkg_dir/"
+  cp README.zh-CN.md "$pkg_dir/" 2>/dev/null || true
+  cp -R assets "$pkg_dir/" 2>/dev/null || true
   cp -R web/dist/. "$pkg_dir/web/"
   cp deploy/*.example "$pkg_dir/deploy/"
   cp deploy/install-controller.sh deploy/install-relay.sh deploy/install-agent.sh "$pkg_dir/deploy/" 2>/dev/null || true
